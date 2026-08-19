@@ -1,0 +1,28 @@
+{
+  "name": "golf-cart-lighting",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Raspberry Pi golf cart lighting controller - Node/Express + React, Art-Net output to a BC-204",
+  "workspaces": [
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:client": "npm run dev --workspace client",
+    "build": "npm run build --workspace client",
+    "start": "node server/index.js",
+    "test": "node --test \"tests/**/*.test.js\""
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

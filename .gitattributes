@@ -1,0 +1,8 @@
+# Files deployed to the Raspberry Pi must keep LF endings — a CRLF shebang
+# makes bash fail with "bad interpreter" and systemd reject the unit.
+*.sh            text eol=lf
+*.service       text eol=lf
+*.desktop       text eol=lf
+
+# Keep the build lockfile from being churned by autocrlf.
+package-lock.json text eol=lf

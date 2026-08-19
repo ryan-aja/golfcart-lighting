@@ -1,0 +1,9 @@
+{
+  "simulation": true,
+  "host": "192.168.10.20",
+  "port": 6454,
+  "bindAddress": null,
+  "frameRate": 30,
+  "keepAliveMs": 1000,
+  "shutdownBlackoutFrames": 5
+}

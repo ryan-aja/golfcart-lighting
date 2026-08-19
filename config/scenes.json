@@ -1,0 +1,84 @@
+{
+  "scenes": [
+    {
+      "id": "all-off",
+      "name": "All Off",
+      "state": {
+        "headlights": { "enabled": false },
+        "reverse": { "mode": "off" },
+        "accent": { "enabled": false },
+        "underglow": { "enabled": false },
+        "pixels": { "enabled": false },
+        "scanner": { "enabled": false }
+      }
+    },
+    {
+      "id": "driving",
+      "name": "Driving",
+      "state": {
+        "headlights": { "enabled": true, "brightness": 100 },
+        "reverse": { "mode": "auto" },
+        "accent": {
+          "enabled": true,
+          "color": { "r": 255, "g": 80, "b": 0 },
+          "brightness": 30
+        },
+        "underglow": { "enabled": false },
+        "pixels": { "enabled": false },
+        "scanner": {
+          "enabled": true,
+          "effect": "scanner",
+          "color": { "r": 255, "g": 0, "b": 0 },
+          "brightness": 100,
+          "speed": 50,
+          "trail": 8
+        }
+      }
+    },
+    {
+      "id": "parked",
+      "name": "Parked",
+      "state": {
+        "headlights": { "enabled": false },
+        "reverse": { "mode": "off" },
+        "accent": {
+          "enabled": true,
+          "color": { "r": 255, "g": 200, "b": 120 },
+          "brightness": 40
+        },
+        "underglow": {
+          "enabled": true,
+          "color": { "r": 255, "g": 200, "b": 120 },
+          "brightness": 25
+        },
+        "pixels": { "enabled": false },
+        "scanner": { "enabled": false }
+      }
+    },
+    {
+      "id": "party",
+      "name": "Party",
+      "state": {
+        "headlights": { "enabled": false },
+        "reverse": { "mode": "off" },
+        "accent": {
+          "enabled": true,
+          "color": { "r": 255, "g": 0, "b": 180 },
+          "brightness": 100
+        },
+        "underglow": {
+          "enabled": true,
+          "color": { "r": 0, "g": 120, "b": 255 },
+          "brightness": 100
+        },
+        "pixels": {
+          "enabled": true,
+          "effect": "rainbow",
+          "speed": 70,
+          "brightness": 100
+        },
+        "scanner": { "enabled": false }
+      }
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "dmxUniverse": 0,
+  "zones": [
+    {
+      "id": "accent",
+      "name": "Accent Lights",
+      "type": "rgb",
+      "universe": 0,
+      "channels": { "r": 1, "g": 2, "b": 3 },
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "color": { "r": 255, "g": 255, "b": 255 },
+        "brightness": 100
+      }
+    },
+    {
+      "id": "underglow",
+      "name": "Underglow",
+      "type": "rgb",
+      "universe": 0,
+      "channels": { "r": 4, "g": 5, "b": 6 },
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "color": { "r": 255, "g": 255, "b": 255 },
+        "brightness": 100
+      }
+    },
+    {
+      "id": "headlights",
+      "name": "Headlights",
+      "type": "dimmer",
+      "universe": 0,
+      "channel": 7,
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "brightness": 100
+      }
+    },
+    {
+      "id": "reverse",
+      "name": "Reverse Light",
+      "type": "mode-dimmer",
+      "universe": 0,
+      "channel": 8,
+      "maxOutput": 255,
+      "modes": ["off", "auto", "on"],
+      "defaults": {
+        "mode": "off",
+        "brightness": 100
+      }
+    },
+    {
+      "id": "spare",
+      "name": "Spare Channel",
+      "type": "dimmer",
+      "universe": 0,
+      "channel": 9,
+      "maxOutput": 255,
+      "hidden": true,
+      "defaults": {
+        "enabled": false,
+        "brightness": 100
+      }
+    }
+  ],
+  "pixelZones": [
+    {
+      "id": "pixels",
+      "name": "Addressable Lights",
+      "type": "pixel",
+      "enabled": false,
+      "universeStart": 2,
+      "pixelCount": 100,
+      "channelsPerPixel": 3,
+      "colorOrder": "RGB",
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "brightness": 100,
+        "effect": "solid",
+        "speed": 50,
+        "trail": 8,
+        "color": { "r": 255, "g": 255, "b": 255 },
+        "secondaryColor": { "r": 0, "g": 0, "b": 255 }
+      }
+    },
+    {
+      "id": "scanner",
+      "name": "Scanner Bar",
+      "type": "pixel",
+      "universeStart": 6,
+      "pixelCount": 48,
+      "channelsPerPixel": 3,
+      "colorOrder": "RGB",
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "brightness": 100,
+        "effect": "scanner",
+        "speed": 50,
+        "trail": 8,
+        "color": { "r": 255, "g": 0, "b": 0 },
+        "secondaryColor": { "r": 0, "g": 0, "b": 0 }
+      }
+    }
+  ]
+}

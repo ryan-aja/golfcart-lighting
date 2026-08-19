@@ -1,0 +1,32 @@
+[Unit]
+Description=Golf Cart Lighting Controller
+Documentation=file:///home/pi/golf-cart-lighting/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/golf-cart-lighting
+ExecStart=/usr/bin/node server/index.js
+
+# Real Art-Net output. Remove this line (or set it to true) to run the Pi in
+# simulation mode without disconnecting the BC-204.
+Environment=LIGHTING_SIMULATION=false
+Environment=NODE_ENV=production
+Environment=LOG_LEVEL=info
+
+Restart=always
+RestartSec=3
+
+# Give the graceful shutdown handler time to blackout the DMX universes
+# before systemd escalates to SIGKILL.
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=golfcart-lighting
+
+[Install]
+WantedBy=multi-user.target

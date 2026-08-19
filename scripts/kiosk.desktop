@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Cart Lighting Kiosk
+Comment=Chromium kiosk for the golf cart lighting controller
+Exec=/home/pi/golf-cart-lighting/scripts/start-kiosk.sh
+X-GNOME-Autostart-enabled=true
