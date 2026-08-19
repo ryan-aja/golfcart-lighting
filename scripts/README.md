@@ -22,7 +22,7 @@ node --version   # expect v22.x
 
 ```bash
 cd /home/pi
-git clone <your-repo-url> golf-cart-lighting
+git clone https://github.com/ryan-aja/golfcart-lighting.git golf-cart-lighting
 cd golf-cart-lighting
 npm install
 npm run build     # produces client/dist, which the Node server serves
