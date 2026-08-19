@@ -1,7 +1,26 @@
 # Raspberry Pi deployment
 
-Nothing here runs automatically. Validate the application in simulation mode
-first, then work through these steps by hand on the Pi.
+Validate the application in simulation mode first. Then either run the
+installer, or work through the numbered steps by hand.
+
+## Quick install
+
+On a freshly imaged Pi, connected to Wi-Fi:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ryan-aja/golfcart-lighting/main/scripts/install.sh | bash
+```
+
+That runs every numbered step below and is safe to re-run — each step checks
+whether its work is already done. `--help` lists the `--skip-*` flags for
+partial installs (`--skip-network` and `--skip-kiosk` are the useful ones on a
+headless bench setup).
+
+The installer rewrites `User=` and the `/home/pi` paths in
+`golfcart-lighting.service` and `kiosk.desktop` to match the user running it,
+so a Pi imaged with a username other than `pi` needs no hand-editing.
+
+## Manual install
 
 Assumed install path: `/home/pi/golf-cart-lighting`. Adjust the paths in
 `golfcart-lighting.service` and `kiosk.desktop` if you use a different one.
