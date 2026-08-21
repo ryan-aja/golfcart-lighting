@@ -250,10 +250,23 @@ if [ "$DO_SERVICE" -eq 1 ]; then
   rm -f "$tmp"
   info "User=${RUN_USER}, WorkingDirectory=${APP_DIR}"
   sudo systemctl daemon-reload
-  sudo systemctl enable --now golfcart-lighting
-  sleep 2
+  sudo systemctl enable golfcart-lighting
+
+  # `enable --now` only starts a unit that is stopped. On a re-run after a code
+  # pull it is a no-op, leaving the old build serving — new routes 404 and the
+  # old config stays live, which looks like the deploy silently failing.
+  # Restarting is unconditional; the unit's SIGTERM handler zeroes DMX on the
+  # way down, so the lights do not latch.
+  sudo systemctl restart golfcart-lighting
+
+  port="$(grep -o '"httpPort"[[:space:]]*:[[:space:]]*[0-9]*' "${APP_DIR}/config/network.json" 2>/dev/null \
+    | grep -o '[0-9]*$' || echo 3100)"
+  for _ in $(seq 1 20); do
+    curl -fsS -o /dev/null "http://localhost:${port}/healthz" 2>/dev/null && break
+    sleep 1
+  done
   if systemctl is-active --quiet golfcart-lighting; then
-    info "service is running"
+    info "service is running (restarted onto the current build)"
   else
     warn "service did not start — journalctl -u golfcart-lighting -n 50"
   fi
