@@ -258,6 +258,19 @@ if [ "$DO_SERVICE" -eq 1 ]; then
     warn "scripts/journald-persist.conf missing — logs will not survive a reboot"
   fi
 
+  # The cart runs isolated, so "wait for the network to be online" is waiting
+  # for something that never arrives: with no AP in range the unit burns its
+  # full 60s timeout and then fails, on every boot, before anything else in
+  # multi-user.target may start. Disabling it lets network-online.target
+  # complete trivially for the things that still pull it in (cloud-init), while
+  # NetworkManager keeps configuring interfaces in the background exactly as
+  # before — Wi-Fi still connects, it just no longer gates the boot.
+  if systemctl is-enabled NetworkManager-wait-online.service >/dev/null 2>&1; then
+    step "Boot: stop waiting for a network the cart may not have"
+    sudo systemctl disable NetworkManager-wait-online.service >/dev/null 2>&1
+    info "NetworkManager-wait-online disabled (was costing up to 60s per boot)"
+  fi
+
   step "systemd service"
   src="${APP_DIR}/scripts/golfcart-lighting.service"
   [ -f "$src" ] || die "missing ${src}"

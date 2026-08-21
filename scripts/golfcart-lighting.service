@@ -1,8 +1,21 @@
 [Unit]
 Description=Golf Cart Lighting Controller
 Documentation=file:///home/pi/golf-cart-lighting/README.md
-After=network-online.target
-Wants=network-online.target
+
+# Deliberately NOT network-online.target.
+#
+# The cart is designed to run isolated — a Pi and a BC-204 on a cable, no
+# router, no uplink. Waiting for the network to be "online" in that situation
+# means waiting for something that will never happen: on a cart with no AP in
+# range, NetworkManager-wait-online burns its full 60s timeout and fails, every
+# single boot, before the lights are allowed to start. Even on the bench it was
+# measured at 1min 9s of a 1min 12s boot.
+#
+# Nothing here needs it. The HTTP server binds 0.0.0.0, the kiosk talks to
+# localhost, and the Art-Net socket tolerates a link that is not up yet — sends
+# fail with ENETUNREACH until eth0 appears and then recover on their own, which
+# the transport now reports honestly.
+After=network.target
 
 [Service]
 Type=simple
