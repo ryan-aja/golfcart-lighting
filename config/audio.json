@@ -1,6 +1,8 @@
 {
   "enabled": true,
   "files": [
+    "../media/theme.mp3",
+    "../media/theme.wav",
     "assets/audio/theme.mp3",
     "assets/audio/theme.wav"
   ],
