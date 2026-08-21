@@ -7,9 +7,9 @@ import ThemeButton from '../components/ThemeButton.jsx';
 /**
  * Main touchscreen dashboard.
  *
- * Single screen, no navigation depth: status bar, scene row, theme audio, then
- * one card per configured zone. Zones come from the server, so the layout
- * follows config.
+ * Single screen, no navigation depth: status bar (with the theme controls),
+ * scene row, then one card per configured zone. Zones come from the server, so
+ * the layout follows config.
  */
 export default function Dashboard() {
   const {
@@ -36,6 +36,15 @@ export default function Dashboard() {
       <header className="top-bar">
         <h1 className="app-title">LIGHTING</h1>
         <div className="top-actions">
+          {/* Theme controls live up here rather than on their own row: the
+              panel is 480px tall and that row cost ~13% of it. */}
+          <ThemeButton
+            compact
+            audio={audio}
+            onPlay={playTheme}
+            onStop={stopTheme}
+            onLoopChange={setThemeLoop}
+          />
           <ConnectionIndicator connected={connected} status={status} />
           <button type="button" className="master-off" onClick={allOff}>
             ALL OFF
@@ -58,13 +67,6 @@ export default function Dashboard() {
           ))}
         </nav>
       )}
-
-      <ThemeButton
-        audio={audio}
-        onPlay={playTheme}
-        onStop={stopTheme}
-        onLoopChange={setThemeLoop}
-      />
 
       <main className="zone-grid">
         {!ready && <p className="loading">Connecting…</p>}

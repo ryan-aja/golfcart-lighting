@@ -21,8 +21,11 @@
   --bad: #ff4d4d;
 
   --radius: 12px;
-  --touch: 56px;
-  --gap: 10px;
+  /* 48px is the floor for a gloved thumb on a moving cart. Everything below
+     was tightened toward it to fit more zones on the 480px-tall panel; nothing
+     that takes a press went under 44px. */
+  --touch: 48px;
+  --gap: 8px;
 
   color-scheme: dark;
 }
@@ -72,31 +75,42 @@ button:disabled {
   gap: var(--gap);
 }
 
+/* Carries the theme controls as well as status, so it has to survive being
+   crowded: it wraps rather than overflowing on a phone. */
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   gap: var(--gap);
 }
 
 .app-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   color: var(--text-dim);
 }
 
 .top-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--gap);
 }
 
+/* Below this the title is just taking room the controls need. */
+@media (max-width: 560px) {
+  .app-title {
+    display: none;
+  }
+}
+
 .master-off {
-  min-height: 48px;
-  padding: 0 22px;
+  min-height: 44px;
+  padding: 0 16px;
   border-radius: var(--radius);
   background: var(--bad);
   color: #fff;
@@ -122,13 +136,13 @@ button:disabled {
 
 .scene-button {
   flex: 1 0 auto;
-  min-width: 120px;
-  min-height: 52px;
-  padding: 0 18px;
+  min-width: 104px;
+  min-height: 46px;
+  padding: 0 14px;
   border: 2px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -159,8 +173,8 @@ button:disabled {
 .zone-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -182,15 +196,15 @@ button:disabled {
 .zone-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .zone-swatch {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.25);
   flex: 0 0 auto;
@@ -199,19 +213,19 @@ button:disabled {
 .zone-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .zone-note {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-dim);
 }
 
 /* ---------- toggle ---------- */
 
 .toggle-button {
-  min-width: 104px;
+  min-width: 88px;
   min-height: var(--touch);
   border-radius: var(--radius);
   border: 2px solid var(--border);
@@ -242,9 +256,9 @@ button:disabled {
 }
 
 .mode-option {
-  min-width: 62px;
+  min-width: 56px;
   min-height: var(--touch);
-  padding: 0 12px;
+  padding: 0 10px;
   color: var(--text-dim);
   font-size: 15px;
   font-weight: 800;
@@ -265,7 +279,7 @@ button:disabled {
 .brightness-slider {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .brightness-slider.is-disabled {
@@ -275,7 +289,7 @@ button:disabled {
 .slider-head {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-dim);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -286,13 +300,28 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * pan-y, not none.
+ *
+ * Sliders cover most of a card's height, so a finger dragging to scroll the
+ * zone list almost always lands on one. With `touch-action: none` the slider
+ * swallowed that gesture and the list simply would not scroll on the
+ * touchscreen. pan-y hands vertical movement back to the scroller while
+ * horizontal movement still works the slider.
+ *
+ * On its own that trades one bug for a worse one — a native range commits a
+ * value the instant a pointer lands, so scrolling from a slider would change a
+ * zone's brightness on the way past. useSliderGesture holds the value back
+ * until the gesture is known to be horizontal (or a tap), and restores it when
+ * the browser claims the gesture for scrolling.
+ */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 44px; /* large hit area; the visible track is drawn on the thumb/track */
+  height: 40px; /* large hit area; the visible track is drawn on the thumb/track */
   background: transparent;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 input[type='range']::-webkit-slider-runnable-track {
@@ -310,17 +339,17 @@ input[type='range']::-moz-range-track {
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 40px;
-  height: 40px;
-  margin-top: -12px;
+  width: 36px;
+  height: 36px;
+  margin-top: -10px; /* (track 16 - thumb 36) / 2, to centre it on the track */
   border-radius: 50%;
   background: var(--accent);
   border: 3px solid #0b0d10;
 }
 
 input[type='range']::-moz-range-thumb {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--accent);
   border: 3px solid #0b0d10;
@@ -331,7 +360,7 @@ input[type='range']::-moz-range-thumb {
 .color-picker {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .color-picker.is-disabled {
@@ -340,12 +369,12 @@ input[type='range']::-moz-range-thumb {
 
 .swatch-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  gap: 6px;
 }
 
 .swatch {
-  height: 48px;
+  height: 44px;
   border-radius: 10px;
   border: 3px solid transparent;
 }
@@ -375,10 +404,10 @@ input[type='range']::-moz-range-thumb {
 
 .rgb-row {
   display: grid;
-  grid-template-columns: 24px 1fr 42px;
+  grid-template-columns: 20px 1fr 38px;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-dim);
 }
@@ -411,18 +440,18 @@ input[type='range']::-moz-range-thumb {
 
 .effect-selector {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 6px;
 }
 
 .effect-option {
-  min-height: 48px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 8px;
   border: 2px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
   color: var(--text-dim);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -474,6 +503,40 @@ input[type='range']::-moz-range-thumb {
 
 .theme-button:active:not(:disabled) {
   filter: brightness(0.85);
+}
+
+/* In the top bar there is no room for the hint text, so a fault has to be
+   visible on the control itself. */
+.theme-button.is-error {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+/* ---------- theme audio, compact (top bar) ---------- */
+
+.theme-bar.is-compact {
+  gap: 6px;
+}
+
+.theme-bar.is-compact .theme-button {
+  min-width: 112px;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  gap: 8px;
+}
+
+.theme-bar.is-compact .loop-toggle {
+  min-height: 44px;
+  padding: 0 12px;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.theme-bar.is-compact .loop-box {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
 }
 
 .loop-toggle {
@@ -557,8 +620,8 @@ input[type='range']::-moz-range-thumb {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 48px;
-  padding: 0 14px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);

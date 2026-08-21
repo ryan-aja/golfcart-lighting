@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import useSliderGesture from '../hooks/useSliderGesture.js';
 
 /**
  * Touch colour picker: large preset swatches with an optional RGB drawer.
@@ -22,6 +23,71 @@ const PRESETS = [
 const rgbCss = (c) => `rgb(${c?.r ?? 0}, ${c?.g ?? 0}, ${c?.b ?? 0})`;
 
 const isSame = (a, b) => a && b && a.r === b.r && a.g === b.g && a.b === b.b;
+
+/**
+ * One channel of the RGB drawer.
+ *
+ * Its own component so it can hold the gesture hook — these rows live in a
+ * scrolling list, and without the guard a swipe to scroll would repaint the
+ * zone on the way past. See useSliderGesture.
+ */
+function RgbSlider({ channel, value, disabled, onChange }) {
+  const [local, setLocal] = useState(value);
+  const localRef = useRef(value);
+  const dragging = useRef(false);
+  const gesture = useSliderGesture();
+
+  useEffect(() => {
+    if (!dragging.current) {
+      setLocal(value);
+      localRef.current = value;
+    }
+  }, [value]);
+
+  const settle = () => {
+    gesture.end();
+    dragging.current = false;
+    onChange(localRef.current);
+  };
+
+  const revert = () => {
+    gesture.cancel();
+    dragging.current = false;
+    setLocal(value);
+    localRef.current = value;
+  };
+
+  return (
+    <label className={`rgb-row rgb-${channel}`}>
+      <span>{channel.toUpperCase()}</span>
+      <input
+        type="range"
+        min="0"
+        max="255"
+        step="1"
+        value={local}
+        disabled={disabled}
+        aria-label={`${channel.toUpperCase()} channel`}
+        onPointerDown={(e) => {
+          dragging.current = true;
+          gesture.begin(e);
+        }}
+        onPointerMove={(e) => {
+          if (gesture.track(e)) onChange(localRef.current);
+        }}
+        onPointerUp={settle}
+        onPointerCancel={revert}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          setLocal(next);
+          localRef.current = next;
+          if (gesture.sending()) onChange(next);
+        }}
+      />
+      <span className="rgb-value">{local}</span>
+    </label>
+  );
+}
 
 export default function ColorPicker({ color, onChange, disabled = false }) {
   const [showCustom, setShowCustom] = useState(false);
@@ -58,19 +124,13 @@ export default function ColorPicker({ color, onChange, disabled = false }) {
       {showCustom && (
         <div className="rgb-drawer">
           {['r', 'g', 'b'].map((channel) => (
-            <label key={channel} className={`rgb-row rgb-${channel}`}>
-              <span>{channel.toUpperCase()}</span>
-              <input
-                type="range"
-                min="0"
-                max="255"
-                step="1"
-                value={current[channel] ?? 0}
-                disabled={disabled}
-                onChange={(e) => onChange({ ...current, [channel]: Number(e.target.value) })}
-              />
-              <span className="rgb-value">{current[channel] ?? 0}</span>
-            </label>
+            <RgbSlider
+              key={channel}
+              channel={channel}
+              value={current[channel] ?? 0}
+              disabled={disabled}
+              onChange={(next) => onChange({ ...current, [channel]: next })}
+            />
           ))}
         </div>
       )}

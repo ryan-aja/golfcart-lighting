@@ -8,9 +8,13 @@
  * Playback is server state, so a second phone sees the button light up too.
  * While a track is running the button becomes STOP, because on a moving cart
  * the thing you most urgently want is a way to make it stop.
+ *
+ * `compact` puts it in the top bar beside the connection indicator, which buys
+ * back a whole row on the 800x480 panel. The hint text is dropped there — the
+ * row has no width for it — so a fault has to read from the button itself,
+ * hence `is-error`.
  */
-
-export default function ThemeButton({ audio, onPlay, onStop, onLoopChange }) {
+export default function ThemeButton({ audio, onPlay, onStop, onLoopChange, compact = false }) {
   // Bootstrap has not arrived yet — render nothing rather than a dead control.
   if (!audio) return null;
 
@@ -23,12 +27,14 @@ export default function ThemeButton({ audio, onPlay, onStop, onLoopChange }) {
     : error || (file ? `Playing ${file} on the cart` : null);
 
   return (
-    <div className="theme-bar">
+    <div className={`theme-bar${compact ? ' is-compact' : ''}`}>
       <button
         type="button"
-        className={`theme-button${playing ? ' is-playing' : ''}`}
+        className={`theme-button${playing ? ' is-playing' : ''}${error ? ' is-error' : ''}`}
         disabled={disabled}
         aria-label={playing ? 'Stop the theme' : 'Play the theme'}
+        // In compact mode this is the only place the fault is legible.
+        title={hint ?? undefined}
         onClick={() => (playing ? onStop() : onPlay(loop))}
       >
         <span className="theme-glyph" aria-hidden="true">
@@ -48,7 +54,9 @@ export default function ThemeButton({ audio, onPlay, onStop, onLoopChange }) {
         <span className="loop-label">LOOP</span>
       </label>
 
-      {hint && <span className={`theme-hint${error ? ' is-error' : ''}`}>{hint}</span>}
+      {!compact && hint && (
+        <span className={`theme-hint${error ? ' is-error' : ''}`}>{hint}</span>
+      )}
     </div>
   );
 }
