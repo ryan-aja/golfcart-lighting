@@ -181,4 +181,7 @@ mobile build.
 | No output but state changes | `ping 192.168.10.20`; confirm the BC-204's Art-Net universe matches `config/lighting.json` |
 | Wrong colour channels | `colorOrder` for pixels, or the `channels` mapping for RGB zones |
 | Need per-frame detail | `sudo systemctl set-environment LOG_LEVEL=debug` then restart the service |
+| Slow boot, repeated "disconnecting from network" | `systemd-analyze blame \| head` — if `NetworkManager-wait-online` is near 60s and `systemctl --failed` lists it, Wi-Fi power save is losing the first DHCP exchange. `nmcli con mod <wifi> 802-11-wireless.powersave 2` |
+| Kiosk shows an "Unlock Keyring" dialog | autologin never unlocks the login keyring; the kiosk passes `--password-store=basic` to avoid asking. Check the flag survived a `git pull` |
+| Two kiosks fighting over the screen | only one autostart entry should exist — labwc reads `~/.config/labwc/autostart`, not `~/.config/autostart` |
 | Port already in use | change `httpPort` in `config/network.json`, or set `PORT=` in the unit |

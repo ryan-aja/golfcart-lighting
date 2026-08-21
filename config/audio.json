@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "files": [
+    "assets/audio/theme.mp3",
+    "assets/audio/theme.wav"
+  ],
+  "volume": 85,
+  "defaultLoop": false,
+  "player": null
+}

@@ -172,6 +172,23 @@ if [ "$DO_NETWORK" -eq 1 ]; then
   else
     warn "no reply from 192.168.10.20 — set the BC-204 to 192.168.10.20/24 in its own web UI"
   fi
+
+  # Wi-Fi power save costs far more than it saves on a cart that is running off
+  # a traction battery anyway. With it on, the card sleeps through the first
+  # DHCP exchange after association: the transaction burns its full timeout,
+  # NetworkManager retries, and startup-complete lands after
+  # NetworkManager-wait-online has already given up — a failed unit and a
+  # minute of boot, reported on the desktop as repeated disconnect notices.
+  # Measured on a Pi 4B: 1min 12s of boot with power save on, 33s with it off.
+  wifi_con="$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null \
+    | awk -F: '$2=="802-11-wireless"{print $1; exit}')"
+  if [ -n "${wifi_con}" ]; then
+    sudo nmcli connection modify "${wifi_con}" 802-11-wireless.powersave 2
+    sudo nmcli connection modify "${wifi_con}" ipv4.dhcp-timeout 20
+    info "wifi '${wifi_con}': power save disabled, dhcp timeout 20s"
+  else
+    warn "no active Wi-Fi connection found — skipping power save fix"
+  fi
 fi
 
 # ------------------------------------------------------ 4. systemd unit ---
