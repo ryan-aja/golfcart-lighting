@@ -233,13 +233,20 @@ if [ "$DO_KIOSK" -eq 1 ]; then
   wrote="${wrote} ~/.config/autostart/kiosk.desktop"
   info "autostart:${wrote}"
 
-  # A kiosk is pointless if the Pi boots to a console.
+  # A kiosk is pointless if the Pi boots to a console. Note the polarity:
+  # get_boot_cli echoes 1 for a graphical boot and 0 for CLI, so 0 is the
+  # case that needs changing.
   if command -v raspi-config >/dev/null 2>&1; then
-    if [ "$(raspi-config nonint get_boot_cli 2>/dev/null)" = "1" ]; then
-      info "switching boot behaviour to desktop + autologin"
+    if [ "$(sudo raspi-config nonint get_boot_cli 2>/dev/null)" = "0" ]; then
+      info "console boot detected — switching to desktop + autologin"
       sudo raspi-config nonint do_boot_behaviour B4
     else
       info "already boots to desktop"
+      # Desktop boot without autologin still stops at a login screen.
+      if [ "$(sudo raspi-config nonint get_autologin 2>/dev/null)" != "0" ]; then
+        info "enabling desktop autologin"
+        sudo raspi-config nonint do_boot_behaviour B4
+      fi
     fi
   else
     warn "raspi-config missing — set boot-to-desktop yourself or the kiosk will not appear"
@@ -255,6 +262,16 @@ if [ "$DO_HOSTNAME" -eq 1 ]; then
   else
     sudo hostnamectl set-hostname "${HOSTNAME_NEW}"
     info "hostname set to ${HOSTNAME_NEW} (takes effect fully after reboot)"
+  fi
+  # hostnamectl does not touch /etc/hosts. Leaving the old name there makes
+  # every sudo call emit "unable to resolve host" and stall on the lookup.
+  if ! grep -qE "^127\.0\.1\.1[[:space:]]+${HOSTNAME_NEW}([[:space:]]|$)" /etc/hosts; then
+    if grep -qE '^127\.0\.1\.1' /etc/hosts; then
+      sudo sed -i "s|^\(127\.0\.1\.1[[:space:]]\+\).*|\1${HOSTNAME_NEW}|" /etc/hosts
+    else
+      printf '127.0.1.1\t%s\n' "${HOSTNAME_NEW}" | sudo tee -a /etc/hosts >/dev/null
+    fi
+    info "/etc/hosts 127.0.1.1 -> ${HOSTNAME_NEW}"
   fi
 fi
 
