@@ -193,13 +193,21 @@ export function validateConfig(config) {
 
   // Audio never affects DMX output, so a bad value here is a warning rather
   // than a startup failure — the cart should still light up without sound.
+  // These therefore repair the value and carry on; throwing would let a typo
+  // in audio.json keep the headlights off, which is the wrong trade on a
+  // vehicle that has to be drivable after dark.
   const audio = config.audio;
   if (audio) {
     if (!Array.isArray(audio.files)) {
-      throw new Error('audio.files must be an array of paths');
+      log.warn(
+        `audio.files must be an array of paths (got ${typeof audio.files}) — ignoring it, ` +
+          'the THEME button will stay disabled'
+      );
+      audio.files = [];
     }
     if (!Number.isFinite(audio.volume) || audio.volume < 0 || audio.volume > 100) {
-      throw new Error(`audio.volume must be between 0 and 100 (got ${audio.volume})`);
+      log.warn(`audio.volume must be between 0 and 100 (got ${audio.volume}) — using 85`);
+      audio.volume = 85;
     }
   }
 

@@ -67,6 +67,10 @@ const MAX_CONSECUTIVE_FAST_EXITS = 3;
 // Grace period between SIGTERM and SIGKILL when stopping playback.
 const KILL_GRACE_MS = 500;
 
+// How much of a player's stderr to keep. Enough for the handful of lines that
+// actually say what went wrong, without holding a looping player's output.
+const STDERR_CAPTURE_LIMIT = 2048;
+
 const DEFAULT_VOLUME = 85;
 
 /** Locate an executable on PATH without spawning it. */
@@ -249,7 +253,11 @@ export class AudioService extends EventEmitter {
 
     let child;
     try {
-      child = spawn(this.#player.path, args, { stdio: 'ignore' });
+      // stderr is piped rather than ignored: players report a dead audio device
+      // there and then exit 0, which is otherwise indistinguishable from a
+      // track that simply ended. Piping it is only safe because the handler
+      // below drains it — an unread pipe fills and blocks the child.
+      child = spawn(this.#player.path, args, { stdio: ['ignore', 'ignore', 'pipe'] });
     } catch (err) {
       this.#error = `Could not start ${this.#player.bin}: ${err.message}`;
       log.error(this.#error);
@@ -260,6 +268,14 @@ export class AudioService extends EventEmitter {
     }
 
     this.#child = child;
+
+    // Kept bounded: a looping player left running for hours must not grow this
+    // without limit. The first lines are the useful ones anyway.
+    let stderr = '';
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (chunk) => {
+      if (stderr.length < STDERR_CAPTURE_LIMIT) stderr += chunk;
+    });
 
     child.on('error', (err) => {
       if (child !== this.#child) return;
@@ -277,11 +293,14 @@ export class AudioService extends EventEmitter {
 
       const ranFor = Date.now() - startedAt;
       const failed = code !== 0 && signal === null;
+      const complaint = tidyStderr(stderr);
 
       if (failed || ranFor < MIN_VIABLE_RUN_MS) {
         this.#fastExits += 1;
         if (this.#fastExits >= MAX_CONSECUTIVE_FAST_EXITS) {
-          this.#error = `${this.#player.bin} exited immediately (code ${code}) — check the audio device`;
+          this.#error =
+            `${this.#player.bin} exited immediately (code ${code})` +
+            (complaint ? `: ${complaint}` : ' — check the audio device');
           log.error(this.#error);
           this.#startedAt = null;
           this.#commit('player-failed');
@@ -292,12 +311,21 @@ export class AudioService extends EventEmitter {
       }
 
       if (this.#loop) {
+        if (complaint) log.warn(`${this.#player.bin}: ${complaint}`);
         log.debug('track finished — looping');
         this.#spawn();
         return;
       }
 
-      log.info('playback finished');
+      // A player that complained and then exited 0 has almost certainly played
+      // nothing — a dead ALSA device does exactly this. Surface it rather than
+      // reporting a silent non-event as a completed track.
+      if (complaint) {
+        this.#error = `${this.#player.bin}: ${complaint}`;
+        log.error(`playback produced no sound — ${this.#error}`);
+      } else {
+        log.info('playback finished');
+      }
       this.#startedAt = null;
       this.#commit('finished');
     });
@@ -349,4 +377,28 @@ function clampVolume(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return DEFAULT_VOLUME;
   return Math.max(0, Math.min(100, Math.round(numeric)));
+}
+
+/**
+ * Condense a player's stderr into one line fit for a log or the status object.
+ *
+ * Players are chatty on the way out — ffplay alone prints a banner, a
+ * configuration dump and progress lines — so keep only what reads like a
+ * complaint, and cap it so a status payload cannot be flooded.
+ */
+export function tidyStderr(raw, maxLength = 200) {
+  const lines = String(raw ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    // ffplay's banner and build details say nothing about the failure.
+    .filter((line) => !/^(ffplay version|built with|configuration:|\s*lib\w+\s+\d)/i.test(line));
+
+  if (lines.length === 0) return null;
+
+  const interesting =
+    lines.filter((line) => /error|fail|cannot|could not|unable|no such|denied|busy/i.test(line));
+  const chosen = (interesting.length ? interesting : lines).join('; ');
+
+  return chosen.length > maxLength ? `${chosen.slice(0, maxLength - 1)}…` : chosen;
 }

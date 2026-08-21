@@ -9,6 +9,7 @@ import {
   findExecutable,
   resolveAudioFile,
   selectPlayer,
+  tidyStderr,
 } from '../server/services/audioService.js';
 
 /**
@@ -31,6 +32,21 @@ function makeTrack(name, ms) {
 function makeBrokenTrack(name) {
   const file = path.join(tmpDir, name);
   fs.writeFileSync(file, 'process.exit(1);\n');
+  return file;
+}
+
+/**
+ * A "track" that complains on stderr and then exits 0 — exactly what a player
+ * does when the audio device is dead. Without reading stderr this is
+ * indistinguishable from a track that played to the end.
+ */
+function makeSilentlyFailingTrack(name, ms = 600) {
+  const file = path.join(tmpDir, name);
+  fs.writeFileSync(
+    file,
+    `process.stderr.write("ALSA: Couldn't open audio device: Unknown error 524\\n");\n` +
+      `setTimeout(() => process.exit(0), ${ms});\n`
+  );
   return file;
 }
 
@@ -80,6 +96,45 @@ test('findExecutable locates a binary on PATH and reports a miss as null', () =>
   assert.equal(findExecutable('definitely-not-installed', env), null);
 
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('tidyStderr keeps the complaint and discards the banner', () => {
+  const ffplayNoise = [
+    'ffplay version 7.1 Copyright (c) 2003-2024 the FFmpeg developers',
+    '  built with gcc 14 (Debian 14.2.0-8)',
+    '  configuration: --prefix=/usr --disable-debug',
+    '  libavutil      59. 39.100 / 59. 39.100',
+    "ALSA: Couldn't open audio device: Unknown error 524",
+    'No more combinations to try, audio open failed',
+  ].join('\n');
+
+  const tidied = tidyStderr(ffplayNoise);
+  assert.match(tidied, /Unknown error 524/);
+  assert.doesNotMatch(tidied, /ffplay version|built with|libavutil/);
+
+  assert.equal(tidyStderr(''), null, 'nothing to report reads as null');
+  assert.equal(tidyStderr(undefined), null);
+  assert.equal(tidyStderr('   \n  \n'), null, 'whitespace only is nothing');
+
+  // Falls back to whatever it has when no line looks like an error.
+  assert.equal(tidyStderr('just some chatter'), 'just some chatter');
+
+  const long = tidyStderr(`error: ${'x'.repeat(500)}`);
+  assert.ok(long.length <= 200, `expected a capped string, got ${long.length}`);
+});
+
+test('a player that complains and exits 0 is reported, not called finished', async () => {
+  const audio = makeService(makeSilentlyFailingTrack('silent-fail.js'));
+  const done = waitForStatus(audio, (s) => !s.playing && s.startedAt === null);
+
+  audio.play();
+  const status = await done;
+
+  assert.equal(status.playing, false);
+  assert.ok(status.error, 'expected the ALSA complaint to surface as an error');
+  assert.match(status.error, /524/);
+
+  await audio.close();
 });
 
 test('resolveAudioFile takes the first candidate that exists', () => {
