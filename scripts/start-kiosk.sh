@@ -65,9 +65,19 @@ echo "using ${BROWSER}"
 # lightdm autologin the login keyring is never unlocked — PAM never sees a
 # password — so asking for it puts an "Unlock Keyring" dialog over the kiosk on
 # every boot. The cart stores no credentials, so the basic store loses nothing.
+#
+# --touch-events=enabled is what makes the panel scrollable by dragging.
+#
+# The default is `auto`, and on this cart it guessed wrong: with the ft5x06
+# touchscreen *and* a wireless keyboard/touchpad attached, Chromium reported
+# navigator.maxTouchPoints = 10 but left the TouchEvent API off
+# ('ontouchstart' in window === false). Touches then arrive as mouse input, and
+# a mouse drag does not scroll a container — so taps worked, the scrollbar
+# could be dragged, and dragging the cards themselves did nothing.
 exec "${BROWSER}" \
   --kiosk \
   --ozone-platform-hint=auto \
+  --touch-events=enabled \
   --password-store=basic \
   --app="${URL}" \
   --incognito \
