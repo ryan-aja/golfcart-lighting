@@ -240,7 +240,12 @@ if [ "$DO_SERVICE" -eq 1 ]; then
   step "Persistent journal"
   # Without this the logs live in tmpfs and every power cycle destroys them,
   # which is how the first BC-204 bring-up ended up with nothing to inspect.
-  jdrop=/etc/systemd/journald.conf.d/10-golfcart-persist.conf
+  # 99- so it sorts after Raspberry Pi OS's own
+  # /usr/lib/systemd/journald.conf.d/40-rpi-volatile-storage.conf. Drop-ins are
+  # ordered by filename across every directory, so a lower number silently
+  # loses to it no matter that this one lives in /etc.
+  jdrop=/etc/systemd/journald.conf.d/99-golfcart-persist.conf
+  sudo rm -f /etc/systemd/journald.conf.d/10-golfcart-persist.conf
   if [ -f "${APP_DIR}/scripts/journald-persist.conf" ]; then
     sudo install -D -m 0644 "${APP_DIR}/scripts/journald-persist.conf" "$jdrop"
     sudo mkdir -p /var/log/journal
