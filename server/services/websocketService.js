@@ -24,12 +24,14 @@ export class WebSocketService {
   #io;
   #lighting;
   #scenes;
+  #audio;
   #getStatus;
   #statusTimer = null;
 
-  constructor({ httpServer, lighting, scenes, getStatus }) {
+  constructor({ httpServer, lighting, scenes, audio, getStatus }) {
     this.#lighting = lighting;
     this.#scenes = scenes;
+    this.#audio = audio;
     this.#getStatus = getStatus;
     this.#io = new Server(httpServer, {
       // Same-origin in production; the Vite dev server proxies, so no CORS
@@ -45,6 +47,13 @@ export class WebSocketService {
     this.#lighting.on('change', ({ snapshot, source }) => {
       this.#io.emit('state', snapshot);
       log.debug(`state broadcast (source=${source})`);
+    });
+
+    // Playback starting, finishing or failing is a state change every client
+    // needs, including the ones that did not press the button.
+    this.#audio.on('change', ({ status, source }) => {
+      this.#io.emit('audio', status);
+      log.debug(`audio broadcast (source=${source})`);
     });
 
     this.#statusTimer = setInterval(() => {
@@ -69,6 +78,7 @@ export class WebSocketService {
       effects: listEffects(),
       snapshot: this.#lighting.getSnapshot(),
       status: this.#status(),
+      audio: this.#audio.getStatus(),
     });
 
     socket.on('zone:set', ({ zone, patch } = {}, ack) => {
@@ -81,6 +91,18 @@ export class WebSocketService {
 
     socket.on('all:off', (_payload, ack) => {
       this.#handle(ack, () => this.#lighting.allOff({ source: 'ws' }));
+    });
+
+    socket.on('audio:play', ({ loop } = {}, ack) => {
+      this.#handle(ack, () => this.#audio.play({ loop, source: 'ws' }));
+    });
+
+    socket.on('audio:stop', (_payload, ack) => {
+      this.#handle(ack, () => this.#audio.stop({ source: 'ws' }));
+    });
+
+    socket.on('audio:loop', ({ loop } = {}, ack) => {
+      this.#handle(ack, () => this.#audio.setLoop(loop, { source: 'ws' }));
     });
 
     socket.on('disconnect', (reason) => {

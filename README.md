@@ -90,9 +90,11 @@ server/
     lightingEngine.js    the single render loop
     sceneService.js
     websocketService.js
+    audioService.js      theme playback, spawns a command-line player
   effects/               pixel effects (pure functions of time)
 client/                  React + Vite (JavaScript, no TypeScript)
 config/                  all hardware configuration
+assets/audio/            theme audio (generated or supplied; not committed)
 scripts/                 Raspberry Pi deployment (see scripts/README.md)
 tests/                   node:test suites
 ```
@@ -110,9 +112,14 @@ requires touching UI or service code.
 | `artnet.json` | simulation flag, destination IP/port, frame rate, keep-alive |
 | `lighting.json` | zones, DMX channels, universes, pixel counts, output limits |
 | `scenes.json` | stored scenes |
+| `audio.json` | theme audio file candidates, volume, player override |
 
 Environment overrides: `PORT`, `LIGHTING_SIMULATION`, `ARTNET_HOST`,
-`ARTNET_PORT`, `LIGHTING_FRAME_RATE`, `ARTNET_KEEPALIVE_MS`, `LOG_LEVEL`.
+`ARTNET_PORT`, `LIGHTING_FRAME_RATE`, `ARTNET_KEEPALIVE_MS`, `LOG_LEVEL`,
+`AUDIO_ENABLED`, `AUDIO_FILE`, `AUDIO_VOLUME`, `AUDIO_PLAYER`, `AUDIO_LOOP`.
+
+`audio.json` is the one optional config file: if it is missing the loader falls
+back to built-in defaults, so a Pi that pulls this code without it still starts.
 
 ### Current DMX mapping (universe 0 → 9-channel PWM decoder)
 
@@ -182,6 +189,60 @@ decoder is rated 3 A per channel, 27 A total.
 
 ---
 
+## Theme audio
+
+The dashboard has a **THEME** button with a **LOOP** checkbox. Pressing it plays
+a sound file through the *Pi's* audio output, not the browser's — so triggering
+it from a phone still makes the cart itself make the noise, and every connected
+client sees the button change state.
+
+Unchecked, the track plays once and the button returns to idle on its own.
+Checked, it repeats until stopped; the checkbox can be toggled mid-track, and
+turning it off lets the current pass finish rather than cutting it short.
+
+### Supplying the audio
+
+No audio is committed to this repo. `config/audio.json` names candidates in
+priority order and the first that exists wins:
+
+```json
+"files": ["assets/audio/theme.mp3", "assets/audio/theme.wav"]
+```
+
+- `theme.mp3` — nothing ships here. Drop in a file you are licensed to use and
+  it takes precedence automatically.
+- `theme.wav` — the fallback, produced by `npm run make-theme`. It is an
+  original synth piece written for this project.
+
+The installer generates the fallback unless a file is already present, so the
+button works on a fresh Pi without any manual step. See
+[`assets/audio/README.md`](assets/audio/README.md) for troubleshooting silent
+output.
+
+> The Knight Rider theme this cart's scanner bar is imitating is a copyrighted
+> 1982 composition, so it cannot be redistributed here. Use your own licensed
+> copy as `theme.mp3` if that is what you want the button to play.
+
+### How playback works
+
+There is no audio library dependency. The service shells out to whichever
+command-line player the Pi has — `mpg123`, `ffplay`, `paplay` or `aplay` — chosen
+at startup by what is installed and what the file extension needs. That keeps
+the install to an apt package rather than a native Node addon needing an arm64
+rebuild on every Node bump.
+
+Looping is a respawn on clean exit rather than the player's own loop flag: every
+player spells that differently, and a respawn is what makes **stop** immediate
+on all of them. A player that dies faster than 400 ms counts as a failure rather
+than a finished track, so a missing sound device surfaces as an error on the
+button instead of spinning the CPU respawning.
+
+Audio never blocks lighting. A Pi with no sound card, no player installed, or no
+file present logs a warning at startup, reports `available: false`, and disables
+the button — the lights come up exactly as before.
+
+---
+
 ## Design notes
 
 ### Why no Art-Net npm library
@@ -224,7 +285,8 @@ optimistically for responsiveness, then redraws from the broadcast.
 Startup is always **all lighting off**; decorative lighting is never restored
 after a power interruption. On SIGTERM/SIGINT the engine stops first, then state
 is zeroed, then several zero-output frames are pushed so the decoder cannot
-latch on a stale value, then the sockets close.
+latch on a stale value, then the sockets close. Theme audio is silenced in the
+same handler, so a looping track cannot outlive the controller.
 
 ---
 
@@ -244,6 +306,10 @@ POST /api/lights/:zoneId     partial zone update
 POST /api/lights/all-off
 GET  /api/scenes
 POST /api/scenes/:sceneId
+GET  /api/audio              playback status
+POST /api/audio/play         { loop?: boolean }
+POST /api/audio/stop
+POST /api/audio/loop         { loop: boolean }
 GET  /healthz
 ```
 
@@ -256,18 +322,25 @@ curl -X POST localhost:3100/api/lights/accent \
   -d '{"enabled":true,"color":{"r":255,"g":0,"b":128},"brightness":100}'
 
 curl -X POST localhost:3100/api/scenes/driving
+
+curl -X POST localhost:3100/api/audio/play   -H 'Content-Type: application/json' -d '{"loop":true}'
+curl -X POST localhost:3100/api/audio/stop
 ```
 
 ### WebSocket
 
 | Direction | Event | Payload |
 | --- | --- | --- |
-| server → client | `bootstrap` | zones, scenes, effects, state, status (sent on connect) |
+| server → client | `bootstrap` | zones, scenes, effects, state, status, audio (sent on connect) |
 | server → client | `state` | `{ state, activeSceneId, updatedAt }` |
 | server → client | `status` | Art-Net/engine health, ~1 Hz |
+| server → client | `audio` | playback status, on every change |
 | client → server | `zone:set` | `{ zone, patch }` |
 | client → server | `scene:activate` | `{ sceneId }` |
 | client → server | `all:off` | — |
+| client → server | `audio:play` | `{ loop }` |
+| client → server | `audio:stop` | — |
+| client → server | `audio:loop` | `{ loop }` |
 
 Client→server events take an acknowledgement callback returning
 `{ ok: true }` or `{ ok: false, error }`.
@@ -306,6 +379,7 @@ The `params` array drives which controls the UI offers for that effect.
 - **Phase 3 — touchscreen UI:** dashboard, toggles, brightness, colour picker, scenes, master off, connection indicator.
 - **Phase 4 — pixels:** universe splitting and six effects (including the Scanner bar) are implemented but untested against a real LED chipset; pixel zones ship disabled at startup.
 - **Phase 5 — Pi deployment:** scripts and documentation ready in `scripts/`, not yet run on hardware.
+- **Theme audio:** THEME button with loop, played server-side through a command-line player. Unit-tested against a stand-in player; **not yet run on the Pi's real sound output.**
 
 ### Next step — first hardware bring-up
 

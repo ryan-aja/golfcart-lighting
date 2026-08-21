@@ -13,6 +13,7 @@
     "dev:client": "npm run dev --workspace client",
     "build": "npm run build --workspace client",
     "start": "node server/index.js",
+    "make-theme": "node scripts/make-theme.js",
     "test": "node --test"
   },
   "dependencies": {

@@ -156,6 +156,37 @@ Test it manually first:
 ./scripts/start-kiosk.sh
 ```
 
+## 6b. Theme audio
+
+The THEME button plays a file through the Pi's own audio output, so the Pi needs
+a command-line player:
+
+```bash
+sudo apt-get install -y mpg123 alsa-utils
+```
+
+No audio is committed to the repo. Generate the original fallback track:
+
+```bash
+cd ~/golf-cart-lighting
+npm run make-theme          # writes assets/audio/theme.wav
+```
+
+To play something else instead, save a file you are licensed to use as
+`assets/audio/theme.mp3` — it takes precedence over the generated one. Set the
+level with `alsamixer`, or `volume` in `config/audio.json`.
+
+Verify the output device before blaming the app — a fresh image defaults to
+HDMI, which is silent on a cart with a speaker in the headphone jack:
+
+```bash
+aplay -l                    # list cards
+aplay assets/audio/theme.wav
+sudo raspi-config           # System Options > Audio, if you hear nothing
+```
+
+---
+
 ## 7. Remote access over Wi-Fi
 
 ```bash
@@ -185,3 +216,6 @@ mobile build.
 | Kiosk shows an "Unlock Keyring" dialog | autologin never unlocks the login keyring; the kiosk passes `--password-store=basic` to avoid asking. Check the flag survived a `git pull` |
 | Two kiosks fighting over the screen | only one autostart entry should exist — labwc reads `~/.config/labwc/autostart`, not `~/.config/autostart` |
 | Port already in use | change `httpPort` in `config/network.json`, or set `PORT=` in the unit |
+| THEME button greyed out | `journalctl -u golfcart-lighting \| grep audio` — either no player (`sudo apt-get install -y mpg123 alsa-utils`) or no file (`npm run make-theme`) |
+| THEME button works but silent | audio is going to HDMI: `sudo raspi-config` → System Options → Audio → Headphones. Then check the level in `alsamixer` |
+| Theme stutters or restarts | the player is dying and being respawned; test it directly with `mpg123 assets/audio/theme.mp3` |

@@ -15,7 +15,7 @@ import { createLogger } from './utils/logger.js';
 
 const log = createLogger('http');
 
-export function createApp({ lighting, scenes, getStatus }) {
+export function createApp({ lighting, scenes, audio, getStatus }) {
   const app = express();
 
   app.disable('x-powered-by');
@@ -24,7 +24,7 @@ export function createApp({ lighting, scenes, getStatus }) {
   // Cheap liveness probe for systemd / kiosk startup scripts.
   app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
-  app.use('/api', createApiRouter({ lighting, scenes, getStatus }));
+  app.use('/api', createApiRouter({ lighting, scenes, audio, getStatus }));
 
   const hasClientBuild = fs.existsSync(path.join(CLIENT_DIST_DIR, 'index.html'));
   if (hasClientBuild) {

@@ -30,6 +30,7 @@ export function LightingProvider({ children }) {
   const [effects, setEffects] = useState([]);
   const [status, setStatus] = useState(null);
   const [activeSceneId, setActiveSceneId] = useState(null);
+  const [audio, setAudio] = useState(null);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
 
@@ -52,6 +53,7 @@ export function LightingProvider({ children }) {
       setStatus(payload.status ?? null);
       setState(payload.snapshot?.state ?? {});
       setActiveSceneId(payload.snapshot?.activeSceneId ?? null);
+      setAudio(payload.audio ?? null);
       setReady(true);
     };
 
@@ -65,6 +67,7 @@ export function LightingProvider({ children }) {
     socket.on('bootstrap', onBootstrap);
     socket.on('state', onState);
     socket.on('status', setStatus);
+    socket.on('audio', setAudio);
 
     return () => {
       socket.off('connect', onConnect);
@@ -72,6 +75,7 @@ export function LightingProvider({ children }) {
       socket.off('bootstrap', onBootstrap);
       socket.off('state', onState);
       socket.off('status', setStatus);
+      socket.off('audio', setAudio);
       clearTimeout(errorTimer.current);
     };
   }, []);
@@ -99,6 +103,38 @@ export function LightingProvider({ children }) {
     if (!result.ok) flashError(result.error);
   }, [flashError]);
 
+  /**
+   * Audio is the one control that is not idempotent — pressing play while a
+   * track runs restarts it. The optimistic flip keeps the button responsive on
+   * the touchscreen; the server's broadcast corrects it either way.
+   */
+  const playTheme = useCallback(
+    async (loop) => {
+      setAudio((current) => (current ? { ...current, playing: true, loop } : current));
+      const result = await emitCommand('audio:play', { loop });
+      if (!result.ok) {
+        flashError(result.error);
+        setAudio((current) => (current ? { ...current, playing: false } : current));
+      }
+    },
+    [flashError]
+  );
+
+  const stopTheme = useCallback(async () => {
+    setAudio((current) => (current ? { ...current, playing: false } : current));
+    const result = await emitCommand('audio:stop', {});
+    if (!result.ok) flashError(result.error);
+  }, [flashError]);
+
+  const setThemeLoop = useCallback(
+    async (loop) => {
+      setAudio((current) => (current ? { ...current, loop } : current));
+      const result = await emitCommand('audio:loop', { loop });
+      if (!result.ok) flashError(result.error);
+    },
+    [flashError]
+  );
+
   const value = useMemo(
     () => ({
       connected,
@@ -109,12 +145,33 @@ export function LightingProvider({ children }) {
       effects,
       status,
       activeSceneId,
+      audio,
       error,
       setZone,
       activateScene,
       allOff,
+      playTheme,
+      stopTheme,
+      setThemeLoop,
     }),
-    [connected, ready, state, zones, scenes, effects, status, activeSceneId, error, setZone, activateScene, allOff]
+    [
+      connected,
+      ready,
+      state,
+      zones,
+      scenes,
+      effects,
+      status,
+      activeSceneId,
+      audio,
+      error,
+      setZone,
+      activateScene,
+      allOff,
+      playTheme,
+      stopTheme,
+      setThemeLoop,
+    ]
   );
 
   return <LightingContext.Provider value={value}>{children}</LightingContext.Provider>;

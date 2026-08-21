@@ -31,6 +31,30 @@ function readJson(name) {
   }
 }
 
+/**
+ * Like readJson, but a missing file falls back to a default. Used for config
+ * added after the first release, so an existing Pi that pulls the new code
+ * without the new file still starts.
+ */
+function readJsonOptional(name, fallback) {
+  const file = path.join(CONFIG_DIR, name);
+  if (!fs.existsSync(file)) {
+    log.debug(`${name} not present - using defaults`);
+    return fallback;
+  }
+  return readJson(name);
+}
+
+// Used when config/audio.json is absent. The paths are the same ones the
+// installer and scripts/make-theme.js write to.
+const DEFAULT_AUDIO = {
+  enabled: true,
+  files: ['assets/audio/theme.mp3', 'assets/audio/theme.wav'],
+  volume: 85,
+  defaultLoop: false,
+  player: null,
+};
+
 function envBool(name) {
   const raw = process.env[name];
   if (raw === undefined || raw === '') return undefined;
@@ -53,6 +77,7 @@ export function loadConfig() {
   const artnetFile = readJson('artnet.json');
   const lighting = readJson('lighting.json');
   const scenes = readJson('scenes.json');
+  const audioFile = readJsonOptional('audio.json', DEFAULT_AUDIO);
 
   const artnet = {
     ...artnetFile,
@@ -72,6 +97,14 @@ export function loadConfig() {
     artnet,
     lighting,
     scenes: scenes.scenes ?? [],
+    audio: {
+      ...audioFile,
+      enabled: firstDefined(envBool('AUDIO_ENABLED'), audioFile.enabled, true),
+      files: process.env.AUDIO_FILE ? [process.env.AUDIO_FILE] : audioFile.files ?? [],
+      volume: firstDefined(envInt('AUDIO_VOLUME'), audioFile.volume, 85),
+      player: firstDefined(process.env.AUDIO_PLAYER, audioFile.player, null),
+      defaultLoop: firstDefined(envBool('AUDIO_LOOP'), audioFile.defaultLoop, false),
+    },
   };
 
   validateConfig(config);
@@ -156,6 +189,18 @@ export function validateConfig(config) {
 
   if (config.artnet.frameRate < 1 || config.artnet.frameRate > 60) {
     throw new Error(`artnet.frameRate must be between 1 and 60 (got ${config.artnet.frameRate})`);
+  }
+
+  // Audio never affects DMX output, so a bad value here is a warning rather
+  // than a startup failure — the cart should still light up without sound.
+  const audio = config.audio;
+  if (audio) {
+    if (!Array.isArray(audio.files)) {
+      throw new Error('audio.files must be an array of paths');
+    }
+    if (!Number.isFinite(audio.volume) || audio.volume < 0 || audio.volume > 100) {
+      throw new Error(`audio.volume must be between 0 and 100 (got ${audio.volume})`);
+    }
   }
 
   log.debug('configuration validated', {

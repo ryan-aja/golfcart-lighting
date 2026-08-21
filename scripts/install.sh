@@ -32,7 +32,7 @@ HOSTNAME_NEW="golfcart"
 NODE_MIN="20.11.0"     # package.json engines
 NODE_MAJOR=22          # only used for the NodeSource fallback
 
-DO_NODE=1 DO_APP=1 DO_NETWORK=1 DO_SERVICE=1 DO_KIOSK=1 DO_HOSTNAME=1
+DO_NODE=1 DO_APP=1 DO_NETWORK=1 DO_SERVICE=1 DO_KIOSK=1 DO_HOSTNAME=1 DO_AUDIO=1
 
 usage() {
   cat <<EOF
@@ -43,6 +43,7 @@ Usage: $0 [options]
   --hostname NAME    mDNS hostname (default: ${HOSTNAME_NEW})
   --skip-node        assume a usable Node is already installed
   --skip-app         do not clone/build (service + kiosk config only)
+  --skip-audio       do not install an audio player or build the theme
   --skip-network     do not touch eth0 / NetworkManager
   --skip-service     do not install the systemd unit
   --skip-kiosk       headless install, no Chromium autostart
@@ -58,6 +59,7 @@ while [ $# -gt 0 ]; do
     --hostname)       HOSTNAME_NEW="$2"; shift 2 ;;
     --skip-node)      DO_NODE=0; shift ;;
     --skip-app)       DO_APP=0; shift ;;
+    --skip-audio)     DO_AUDIO=0; shift ;;
     --skip-network)   DO_NETWORK=0; shift ;;
     --skip-service)   DO_SERVICE=0; shift ;;
     --skip-kiosk)     DO_KIOSK=0; shift ;;
@@ -139,6 +141,37 @@ if [ "$DO_APP" -eq 1 ]; then
   npm run build
   info "npm test"
   npm test
+fi
+
+# ------------------------------------------------- 2b. Theme audio ---
+# The THEME button plays a file through the Pi's own audio output, so the Pi
+# needs a command-line player. mpg123 covers mp3; alsa-utils brings aplay for
+# wav plus alsamixer for setting the level.
+if [ "$DO_AUDIO" -eq 1 ]; then
+  step "Theme audio"
+  if ! sudo apt-get install -y mpg123 alsa-utils; then
+    warn "no audio player installed - the THEME button will stay disabled"
+  fi
+
+  # No audio is committed to the repo: a commercial recording could not be
+  # redistributed there. Generate the original fallback track unless the
+  # operator has already dropped their own file in.
+  if [ -f "${APP_DIR}/assets/audio/theme.mp3" ]; then
+    info "using your assets/audio/theme.mp3"
+  elif [ -f "${APP_DIR}/assets/audio/theme.wav" ]; then
+    info "theme.wav already present"
+  else
+    if ! (cd "${APP_DIR}" && npm run --silent make-theme); then
+      warn "could not generate the theme - run 'npm run make-theme' by hand"
+    fi
+  fi
+
+  # HDMI is the default sink on a fresh image, which is silent on a cart with
+  # a jack-connected speaker. Only a warning: some carts do use HDMI audio.
+  if command -v aplay >/dev/null 2>&1; then
+    info "audio devices: $(aplay -l 2>/dev/null | grep -c '^card ' || echo 0) card(s)"
+    info "if you hear nothing, set the output with: sudo raspi-config (System Options > Audio)"
+  fi
 fi
 
 # ------------------------------------------ 3. Static ethernet to BC-204 ---

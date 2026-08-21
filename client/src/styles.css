@@ -432,6 +432,125 @@ input[type='range']::-moz-range-thumb {
   color: var(--accent-ink);
 }
 
+/* ---------- theme audio ---------- */
+
+.theme-bar {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.theme-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-width: 148px;
+  min-height: 52px;
+  padding: 0 20px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.theme-button .theme-glyph {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Playing reads as "press to stop", so it takes the same red as ALL OFF
+   rather than the amber used for an active-but-idle control. */
+.theme-button.is-playing {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
+}
+
+.theme-button:active:not(:disabled) {
+  filter: brightness(0.85);
+}
+
+.loop-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.loop-toggle.is-disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The native box is too small for a gloved thumb, so it is hidden and the
+   28px .loop-box is drawn in its place. Keeping the input in the DOM (rather
+   than a div with role="checkbox") preserves keyboard and screen-reader
+   behaviour for free. */
+.loop-toggle input[type='checkbox'] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.loop-box {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 3px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+}
+
+.loop-toggle input[type='checkbox']:checked + .loop-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  /* Tick drawn with a rotated rectangle so no icon font is needed. */
+  background-image: linear-gradient(45deg, transparent 46%, var(--accent-ink) 46% 54%, transparent 54%),
+    linear-gradient(-45deg, transparent 46%, var(--accent-ink) 46% 54%, transparent 54%);
+}
+
+.loop-toggle input[type='checkbox']:checked ~ .loop-label {
+  color: var(--accent);
+}
+
+.loop-toggle input[type='checkbox']:focus-visible + .loop-box {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Truncates rather than wraps: this row must stay one line tall on the 800x480
+   panel, and the same text is in the server log if it matters. */
+.theme-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.theme-hint.is-error {
+  color: var(--bad);
+}
+
 /* ---------- status ---------- */
 
 .connection-indicator {

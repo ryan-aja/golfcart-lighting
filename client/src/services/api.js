@@ -23,4 +23,10 @@ export const api = {
     request(`/api/lights/${zoneId}`, { method: 'POST', body: JSON.stringify(patch) }),
   activateScene: (sceneId) => request(`/api/scenes/${sceneId}`, { method: 'POST' }),
   allOff: () => request('/api/lights/all-off', { method: 'POST' }),
+  getAudio: () => request('/api/audio'),
+  playTheme: (loop = false) =>
+    request('/api/audio/play', { method: 'POST', body: JSON.stringify({ loop }) }),
+  stopTheme: () => request('/api/audio/stop', { method: 'POST' }),
+  setThemeLoop: (loop) =>
+    request('/api/audio/loop', { method: 'POST', body: JSON.stringify({ loop }) }),
 };

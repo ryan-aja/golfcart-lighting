@@ -6,6 +6,7 @@
  *   2. initialise Art-Net (simulated or real transport)
  *   3. initialise lighting state (everything off)
  *   4. start the lighting engine / render loop
+ *   4b. initialise audio playback
  *   5. start Express
  *   6. start the WebSocket service
  *   7. serve the UI
@@ -16,7 +17,7 @@
  */
 
 import http from 'node:http';
-import { loadConfig } from './config/index.js';
+import { loadConfig, ROOT_DIR } from './config/index.js';
 import { createLogger } from './utils/logger.js';
 import { createApp } from './app.js';
 import { createArtNetService } from './services/artnet/index.js';
@@ -24,6 +25,7 @@ import { LightingService } from './services/lightingService.js';
 import { SceneService } from './services/sceneService.js';
 import { LightingEngine } from './services/lightingEngine.js';
 import { WebSocketService } from './services/websocketService.js';
+import { AudioService } from './services/audioService.js';
 
 const log = createLogger('startup');
 
@@ -59,6 +61,10 @@ async function main() {
   });
   engine.start();
 
+  // 4b. Audio. Never fatal: a cart with no sound card still has to light up,
+  // so the service reports its own unavailability rather than throwing.
+  const audio = new AudioService({ audioConfig: config.audio, rootDir: ROOT_DIR });
+
   const getStatus = () => ({
     artnet: {
       ...artnet.getStatus(),
@@ -66,13 +72,14 @@ async function main() {
     },
     engine: engine.getStatus(),
     activeSceneId: lighting.getSnapshot().activeSceneId,
+    audio: audio.getStatus(),
     uptimeSeconds: Math.round(process.uptime()),
   });
 
   // 5-7. HTTP + WebSocket + UI
-  const app = createApp({ lighting, scenes, getStatus });
+  const app = createApp({ lighting, scenes, audio, getStatus });
   const server = http.createServer(app);
-  const ws = new WebSocketService({ httpServer: server, lighting, scenes, getStatus });
+  const ws = new WebSocketService({ httpServer: server, lighting, scenes, audio, getStatus });
   ws.start();
 
   await new Promise((resolve, reject) => {
@@ -84,10 +91,10 @@ async function main() {
   // 8. The engine is already pushing the known (all-off) state.
   log.info('controller ready');
 
-  registerShutdown({ server, ws, engine, artnet, lighting, config });
+  registerShutdown({ server, ws, engine, artnet, lighting, audio, config });
 }
 
-function registerShutdown({ server, ws, engine, artnet, lighting, config }) {
+function registerShutdown({ server, ws, engine, artnet, lighting, audio, config }) {
   let shuttingDown = false;
 
   const shutdown = async (signal) => {
@@ -99,6 +106,13 @@ function registerShutdown({ server, ws, engine, artnet, lighting, config }) {
     // overwrite the zeros we are about to send.
     engine.stop();
     lighting.allOff({ source: 'shutdown' });
+
+    // Don't leave the theme looping over a stopped controller.
+    try {
+      await audio.close();
+    } catch (err) {
+      log.error('audio shutdown error:', err.message);
+    }
 
     try {
       artnet.blackout(config.artnet.shutdownBlackoutFrames ?? 5);

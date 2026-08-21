@@ -2,12 +2,14 @@ import { useLighting } from '../hooks/LightingContext.jsx';
 import LightingZoneCard from '../components/LightingZoneCard.jsx';
 import SceneButton from '../components/SceneButton.jsx';
 import ConnectionIndicator from '../components/ConnectionIndicator.jsx';
+import ThemeButton from '../components/ThemeButton.jsx';
 
 /**
  * Main touchscreen dashboard.
  *
- * Single screen, no navigation depth: status bar, scene row, then one card per
- * configured zone. Zones come from the server, so the layout follows config.
+ * Single screen, no navigation depth: status bar, scene row, theme audio, then
+ * one card per configured zone. Zones come from the server, so the layout
+ * follows config.
  */
 export default function Dashboard() {
   const {
@@ -19,10 +21,14 @@ export default function Dashboard() {
     effects,
     status,
     activeSceneId,
+    audio,
     error,
     setZone,
     activateScene,
     allOff,
+    playTheme,
+    stopTheme,
+    setThemeLoop,
   } = useLighting();
 
   return (
@@ -52,6 +58,13 @@ export default function Dashboard() {
           ))}
         </nav>
       )}
+
+      <ThemeButton
+        audio={audio}
+        onPlay={playTheme}
+        onStop={stopTheme}
+        onLoopChange={setThemeLoop}
+      />
 
       <main className="zone-grid">
         {!ready && <p className="loading">Connecting…</p>}
