@@ -27,10 +27,24 @@ if [ -f "${PROFILE}" ]; then
 fi
 
 # Blank the cursor on a touch-only panel if unclutter is installed.
+# unclutter is X11-only, so this is a no-op under a Wayland session (labwc).
 command -v unclutter >/dev/null 2>&1 && unclutter -idle 0 &
 
-exec chromium-browser \
+# Trixie ships the binary as `chromium`; earlier releases used
+# `chromium-browser`. Prefer whichever exists rather than assuming.
+BROWSER=""
+for candidate in chromium chromium-browser; do
+  if command -v "${candidate}" >/dev/null 2>&1; then
+    BROWSER="${candidate}"
+    break
+  fi
+done
+[ -n "${BROWSER}" ] || { echo "no chromium binary found" >&2; exit 1; }
+echo "using ${BROWSER}"
+
+exec "${BROWSER}" \
   --kiosk \
+  --ozone-platform-hint=auto \
   --app="${URL}" \
   --incognito \
   --noerrdialogs \

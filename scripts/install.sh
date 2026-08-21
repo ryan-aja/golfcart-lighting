@@ -29,7 +29,8 @@ fi
 
 BRANCH="main"
 HOSTNAME_NEW="golfcart"
-NODE_MAJOR=22
+NODE_MIN="20.11.0"     # package.json engines
+NODE_MAJOR=22          # only used for the NodeSource fallback
 
 DO_NODE=1 DO_APP=1 DO_NETWORK=1 DO_SERVICE=1 DO_KIOSK=1 DO_HOSTNAME=1
 
@@ -81,19 +82,40 @@ info "install:  ${APP_DIR}"
 info "branch:   ${BRANCH}"
 
 # ---------------------------------------------------------------- 1. Node ---
+# package.json requires >=20.11. Prefer the distro package: Raspberry Pi OS
+# Trixie ships Node 20.19, which is new enough, and NodeSource publishes no
+# trixie suite at all. Only fall back to NodeSource when apt cannot satisfy it.
+node_ok() {
+  command -v node >/dev/null 2>&1 || return 1
+  [ "$(printf '%s\n%s\n' "${NODE_MIN}" "$(node --version | tr -d v)" \
+      | sort -V | head -1)" = "${NODE_MIN}" ]
+}
+
 if [ "$DO_NODE" -eq 1 ]; then
-  step "Node ${NODE_MAJOR}.x"
-  current=""
-  command -v node >/dev/null 2>&1 && current="$(node --version)"
-  major="$(printf %s "${current#v}" | cut -d. -f1)"
-  if [ -n "${major}" ] && [ "${major}" -ge "${NODE_MAJOR}" ] 2>/dev/null; then
-    info "already ${current}, skipping"
+  step "Node (need >= ${NODE_MIN})"
+  if node_ok; then
+    info "already $(node --version), skipping"
   else
-    info "installing from NodeSource (found: ${current:-none})"
-    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | sudo -E bash -
-    sudo apt-get install -y nodejs
-    info "now $(node --version)"
+    info "found: $(command -v node >/dev/null 2>&1 && node --version || echo none)"
+    cand="$(apt-cache policy nodejs 2>/dev/null | awk '/Candidate:/{print $2}')"
+    info "apt candidate: ${cand:-none}"
+    sudo apt-get update -qq
+    sudo apt-get install -y nodejs npm
+    if node_ok; then
+      info "installed $(node --version) from apt"
+    else
+      . /etc/os-release
+      info "apt version too old, trying NodeSource for ${VERSION_CODENAME}"
+      if curl -fsI "https://deb.nodesource.com/node_${NODE_MAJOR}.x/dists/${VERSION_CODENAME}/Release" >/dev/null 2>&1; then
+        curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | sudo -E bash -
+        sudo apt-get install -y nodejs
+      else
+        die "no Node >= ${NODE_MIN} available: apt has ${cand:-none} and NodeSource has no ${VERSION_CODENAME} suite"
+      fi
+    fi
   fi
+  command -v npm >/dev/null 2>&1 || sudo apt-get install -y npm
+  info "node $(node --version), npm $(npm --version)"
 fi
 
 # ---------------------------------------------------- 2. Clone and build ---
@@ -170,13 +192,58 @@ fi
 # ----------------------------------------------------- 5. Chromium kiosk ---
 if [ "$DO_KIOSK" -eq 1 ]; then
   step "Chromium kiosk"
-  sudo apt-get install -y chromium-browser unclutter || \
-    sudo apt-get install -y chromium unclutter
+
+  # Trixie ships `chromium`; older releases shipped `chromium-browser`. Install
+  # whichever this release actually has — on Trixie the chromium-browser
+  # package is a stale compatibility build several major versions behind.
+  if apt-cache policy chromium 2>/dev/null | grep -q 'Candidate: [0-9]'; then
+    sudo apt-get install -y chromium
+  else
+    sudo apt-get install -y chromium-browser
+  fi
+  sudo apt-get install -y unclutter || warn "unclutter unavailable (X11 only) — cursor will stay visible"
+
   chmod +x "${APP_DIR}/scripts/start-kiosk.sh"
+
+  # The desktop session decides which autostart mechanism applies. labwc and
+  # wayfire (Wayland) do not read ~/.config/autostart, so write whichever the
+  # installed compositor honours.
+  wrote=""
+  if [ -d "${HOME}/.config/labwc" ] || dpkg -s labwc >/dev/null 2>&1; then
+    mkdir -p "${HOME}/.config/labwc"
+    auto="${HOME}/.config/labwc/autostart"
+    touch "$auto"
+    if ! grep -qF "start-kiosk.sh" "$auto" 2>/dev/null; then
+      printf '%s &\n' "${APP_DIR}/scripts/start-kiosk.sh" >> "$auto"
+    fi
+    chmod +x "$auto"
+    wrote="${wrote} ~/.config/labwc/autostart"
+  fi
+  if dpkg -s wayfire >/dev/null 2>&1 && [ -f "${HOME}/.config/wayfire.ini" ]; then
+    if ! grep -qF "start-kiosk.sh" "${HOME}/.config/wayfire.ini"; then
+      printf '\n[autostart]\nkiosk = %s\n' "${APP_DIR}/scripts/start-kiosk.sh" \
+        >> "${HOME}/.config/wayfire.ini"
+    fi
+    wrote="${wrote} ~/.config/wayfire.ini"
+  fi
+  # XDG autostart as well — harmless where unused, and it covers an X11 session.
   mkdir -p "${HOME}/.config/autostart"
   sed "s|/home/pi/golf-cart-lighting|${APP_DIR}|g" \
     "${APP_DIR}/scripts/kiosk.desktop" > "${HOME}/.config/autostart/kiosk.desktop"
-  info "autostart written to ~/.config/autostart/kiosk.desktop"
+  wrote="${wrote} ~/.config/autostart/kiosk.desktop"
+  info "autostart:${wrote}"
+
+  # A kiosk is pointless if the Pi boots to a console.
+  if command -v raspi-config >/dev/null 2>&1; then
+    if [ "$(raspi-config nonint get_boot_cli 2>/dev/null)" = "1" ]; then
+      info "switching boot behaviour to desktop + autologin"
+      sudo raspi-config nonint do_boot_behaviour B4
+    else
+      info "already boots to desktop"
+    fi
+  else
+    warn "raspi-config missing — set boot-to-desktop yourself or the kiosk will not appear"
+  fi
 fi
 
 # ------------------------------------------------- 6. Hostname / mDNS ---
