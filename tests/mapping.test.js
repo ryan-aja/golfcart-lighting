@@ -53,38 +53,48 @@ test('a disabled headlight outputs zero regardless of brightness', () => {
   assert.equal(channel(universe, 7), 0);
 });
 
-test('accent RGB maps onto channels 1-3 with brightness scaling', () => {
+test('accent RGB maps onto its configured channels with brightness scaling', () => {
+  const { r, g, b } = zoneById('accent').channels;
   const state = createInitialState(lightingConfig);
   state.accent = { enabled: true, color: { r: 255, g: 0, b: 128 }, brightness: 100 };
 
   const universe = renderDmxUniverses(state, lightingConfig).get(DMX_UNIVERSE);
-  assert.equal(channel(universe, 1), 255);
-  assert.equal(channel(universe, 2), 0);
-  assert.equal(channel(universe, 3), 128);
+  assert.equal(channel(universe, r), 255);
+  assert.equal(channel(universe, g), 0);
+  assert.equal(channel(universe, b), 128);
 
   state.accent.brightness = 50;
   const dimmed = renderDmxUniverses(state, lightingConfig).get(DMX_UNIVERSE);
-  assert.equal(channel(dimmed, 1), 128);
-  assert.equal(channel(dimmed, 2), 0);
-  assert.equal(channel(dimmed, 3), 64);
+  assert.equal(channel(dimmed, r), 128);
+  assert.equal(channel(dimmed, g), 0);
+  assert.equal(channel(dimmed, b), 64);
 });
 
-test('underglow RGB maps onto channels 4-6, independent of accent', () => {
+test('underglow RGB renders independently of accent', () => {
+  const accent = zoneById('accent').channels;
+  const underglow = zoneById('underglow').channels;
   const state = createInitialState(lightingConfig);
   state.accent = { enabled: true, color: { r: 255, g: 0, b: 0 }, brightness: 100 };
   state.underglow = { enabled: true, color: { r: 0, g: 0, b: 255 }, brightness: 100 };
 
   const universe = renderDmxUniverses(state, lightingConfig).get(DMX_UNIVERSE);
-  assert.deepEqual([1, 2, 3].map((c) => channel(universe, c)), [255, 0, 0]);
-  assert.deepEqual([4, 5, 6].map((c) => channel(universe, c)), [0, 0, 255]);
+  assert.deepEqual(
+    [accent.r, accent.g, accent.b].map((c) => channel(universe, c)),
+    [255, 0, 0]
+  );
+  assert.deepEqual(
+    [underglow.r, underglow.g, underglow.b].map((c) => channel(universe, c)),
+    [0, 0, 255]
+  );
 });
 
 test('reverse light only outputs in "on" mode; "auto" stays dark until inputs exist', () => {
   const zone = zoneById('reverse');
-  assert.deepEqual(renderZoneChannels(zone, { mode: 'off', brightness: 100 }), { 8: 0 });
-  assert.deepEqual(renderZoneChannels(zone, { mode: 'auto', brightness: 100 }), { 8: 0 });
-  assert.deepEqual(renderZoneChannels(zone, { mode: 'on', brightness: 100 }), { 8: 255 });
-  assert.deepEqual(renderZoneChannels(zone, { mode: 'on', brightness: 50 }), { 8: 128 });
+  const ch = zone.channel;
+  assert.deepEqual(renderZoneChannels(zone, { mode: 'off', brightness: 100 }), { [ch]: 0 });
+  assert.deepEqual(renderZoneChannels(zone, { mode: 'auto', brightness: 100 }), { [ch]: 0 });
+  assert.deepEqual(renderZoneChannels(zone, { mode: 'on', brightness: 100 }), { [ch]: 255 });
+  assert.deepEqual(renderZoneChannels(zone, { mode: 'on', brightness: 50 }), { [ch]: 128 });
 });
 
 test('the initial all-off state produces an entirely zero universe', () => {
@@ -95,13 +105,16 @@ test('the initial all-off state produces an entirely zero universe', () => {
   assert.ok(universe.every((value) => value === 0), 'expected every DMX channel to be 0');
 });
 
-test('the unassigned spare channel stays at zero', () => {
+test('a hidden zone nobody has touched stays at zero', () => {
+  const hidden = lightingConfig.zones.find((z) => z.hidden);
+  assert.ok(hidden, 'expected the config to keep a hidden zone reserved');
+
   const state = createInitialState(lightingConfig);
   state.headlights = { enabled: true, brightness: 100 };
   state.accent = { enabled: true, color: { r: 255, g: 255, b: 255 }, brightness: 100 };
 
   const universe = renderDmxUniverses(state, lightingConfig).get(DMX_UNIVERSE);
-  assert.equal(channel(universe, 9), 0);
+  assert.equal(channel(universe, hidden.channel), 0);
 });
 
 test('scaleColorComponent combines component, brightness and output ceiling', () => {

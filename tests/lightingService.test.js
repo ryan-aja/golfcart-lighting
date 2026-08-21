@@ -120,9 +120,15 @@ test('the engine renders state through to DMX channel values', () => {
   lighting.setZone('underglow', { enabled: true, color: { r: 0, g: 0, b: 255 }, brightness: 100 });
   engine.renderFrame();
 
+  // Read the channel numbers out of the config rather than hardcoding them —
+  // rewiring the cart should not turn this test red.
+  const zone = (id) => config.lighting.zones.find((z) => z.id === id);
+  const headlightsCh = zone('headlights').channel;
+  const underglowBlueCh = zone('underglow').channels.b;
+
   const universe = artnet.get(config.lighting.dmxUniverse);
-  assert.equal(universe[6], 128, 'headlights on channel 7');
-  assert.equal(universe[5], 255, 'underglow blue on channel 6');
+  assert.equal(universe[headlightsCh - 1], 128, `headlights on channel ${headlightsCh}`);
+  assert.equal(universe[underglowBlueCh - 1], 255, `underglow blue on channel ${underglowBlueCh}`);
   assert.equal(artnet.flushes(), 1);
 });
 

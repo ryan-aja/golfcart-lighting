@@ -125,11 +125,11 @@ back to built-in defaults, so a Pi that pulls this code without it still starts.
 
 | Channel | Zone |
 | --- | --- |
-| 1, 2, 3 | Accent RGB |
-| 4, 5, 6 | Underglow RGB |
+| 1, 2, 3 | Underglow RGB |
+| 4, 5, 6 | Accent RGB |
 | 7 | Headlights |
-| 8 | Reverse light |
-| 9 | Spare (unassigned, always 0) |
+| 8 | Headlights 2 (hidden, always 0 until unhidden) |
+| 9 | Reverse light |
 
 ### Pixel zones
 

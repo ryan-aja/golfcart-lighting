@@ -2,8 +2,8 @@
   "dmxUniverse": 0,
   "zones": [
     {
-      "id": "accent",
-      "name": "Accent Lights",
+      "id": "underglow",
+      "name": "Underglow",
       "type": "rgb",
       "universe": 0,
       "channels": { "r": 1, "g": 2, "b": 3 },
@@ -15,8 +15,8 @@
       }
     },
     {
-      "id": "underglow",
-      "name": "Underglow",
+      "id": "accent",
+      "name": "Accent Lights",
       "type": "rgb",
       "universe": 0,
       "channels": { "r": 4, "g": 5, "b": 6 },
@@ -40,32 +40,32 @@
       }
     },
     {
-      "id": "reverse",
-      "name": "Reverse Light",
-      "type": "mode-dimmer",
-      "universe": 0,
-      "channel": 8,
-      "maxOutput": 255,
-      "modes": ["off", "auto", "on"],
-      "defaults": {
-        "mode": "off",
-        "brightness": 100
-      }
-    },
-    {
-      "id": "spare",
-      "name": "Spare Channel",
+      "id": "headlights-2",
+      "name": "Headlights 2",
       "type": "dimmer",
       "universe": 0,
-      "channel": 9,
+      "channel": 8,
       "maxOutput": 255,
       "hidden": true,
       "defaults": {
         "enabled": false,
         "brightness": 100
       }
+    },
+    {
+      "id": "reverse",
+      "name": "Reverse Light",
+      "type": "mode-dimmer",
+      "universe": 0,
+      "channel": 9,
+      "maxOutput": 255,
+      "modes": ["off", "auto", "on"],
+      "defaults": {
+        "mode": "off",
+        "brightness": 100
+      }
     }
-  ],
+    ],
   "pixelZones": [
     {
       "id": "pixels",
