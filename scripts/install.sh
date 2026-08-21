@@ -226,11 +226,18 @@ if [ "$DO_KIOSK" -eq 1 ]; then
     fi
     wrote="${wrote} ~/.config/wayfire.ini"
   fi
-  # XDG autostart as well — harmless where unused, and it covers an X11 session.
-  mkdir -p "${HOME}/.config/autostart"
-  sed "s|/home/pi/golf-cart-lighting|${APP_DIR}|g" \
-    "${APP_DIR}/scripts/kiosk.desktop" > "${HOME}/.config/autostart/kiosk.desktop"
-  wrote="${wrote} ~/.config/autostart/kiosk.desktop"
+  # Only fall back to XDG autostart when no compositor-specific entry was
+  # written. Installing both makes the session launch two kiosks that then
+  # race each other over the Chromium profile lock.
+  if [ -z "${wrote}" ]; then
+    mkdir -p "${HOME}/.config/autostart"
+    sed "s|/home/pi/golf-cart-lighting|${APP_DIR}|g" \
+      "${APP_DIR}/scripts/kiosk.desktop" > "${HOME}/.config/autostart/kiosk.desktop"
+    wrote="${wrote} ~/.config/autostart/kiosk.desktop"
+  else
+    # Clear a stale XDG entry left by an earlier run of this installer.
+    rm -f "${HOME}/.config/autostart/kiosk.desktop"
+  fi
   info "autostart:${wrote}"
 
   # A kiosk is pointless if the Pi boots to a console. Note the polarity:

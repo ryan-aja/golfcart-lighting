@@ -6,6 +6,18 @@
 
 set -euo pipefail
 
+# A desktop session can fire more than one autostart mechanism (labwc's
+# autostart and the XDG entry both, say), and a second Chromium against the
+# same profile races the first over its lock. Hold an flock for the lifetime
+# of the browser — the exec'd process inherits the descriptor — so only the
+# first invocation gets through.
+LOCK="${XDG_RUNTIME_DIR:-/tmp}/golfcart-kiosk.lock"
+exec 9>"${LOCK}"
+if ! flock -n 9; then
+  echo "kiosk already running (lock held on ${LOCK}) — exiting"
+  exit 0
+fi
+
 PORT="${LIGHTING_PORT:-3100}"
 URL="http://localhost:${PORT}"
 
