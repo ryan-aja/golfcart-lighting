@@ -147,15 +147,24 @@ if [ "$DO_NETWORK" -eq 1 ]; then
   if ! command -v nmcli >/dev/null 2>&1; then
     warn "nmcli not found — not NetworkManager-based, configure eth0 by hand"
   elif nmcli -t -f NAME connection show | grep -qx "bc204"; then
-    info "connection 'bc204' already exists, skipping"
+    info "connection 'bc204' already exists"
+    # Older runs of this installer created the profile without the timeout.
+    sudo nmcli connection modify bc204 connection.wait-device-timeout 0
   else
     # Deliberately no gateway and no DNS: point-to-point cable to the
     # lighting controller. Wi-Fi must stay the default route.
+    #
+    # wait-device-timeout 0 matters as much as the addressing: the BC-204
+    # cable is routinely unplugged, and with the default (-1) NM never calls
+    # startup complete, so NetworkManager-wait-online blocks the whole boot
+    # for a minute and then fails. The desktop reports that as a stream of
+    # "disconnecting from network" notifications.
     sudo nmcli connection add type ethernet ifname eth0 con-name bc204 \
       ipv4.method manual \
       ipv4.addresses 192.168.10.10/24 \
       ipv6.method disabled \
-      connection.autoconnect yes
+      connection.autoconnect yes \
+      connection.wait-device-timeout 0
     sudo nmcli connection up bc204 || warn "could not bring up bc204 — is the cable connected?"
   fi
   if ping -c 2 -W 2 192.168.10.20 >/dev/null 2>&1; then
