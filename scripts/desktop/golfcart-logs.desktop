@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Lighting Logs
+Comment=Follow the controller log live
+Exec=__APP_DIR__/scripts/desktop-actions.sh logs
+Icon=utilities-terminal
+Terminal=false
+Categories=Utility;

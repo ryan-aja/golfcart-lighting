@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Restart Lighting Service
+Comment=Restart the controller without rebooting the Pi
+Exec=__APP_DIR__/scripts/desktop-actions.sh restart
+Icon=view-refresh
+Terminal=false
+Categories=Utility;

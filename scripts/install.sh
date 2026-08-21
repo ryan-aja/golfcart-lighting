@@ -350,6 +350,44 @@ if [ "$DO_KIOSK" -eq 1 ]; then
     warn "no labwc <touch> config found — if drag-to-scroll fails, check mouseEmulation"
   fi
 
+  # ---- desktop launchers + keyboard shortcuts ----
+  #
+  # Closing the kiosk (Alt+F4, or a crash) otherwise leaves a bare desktop with
+  # no obvious way back in short of a terminal, which is no use on a cart.
+  step "Desktop shortcuts"
+  chmod +x "${APP_DIR}/scripts/desktop-actions.sh"
+  mkdir -p "${HOME}/Desktop"
+  installed=0
+  for src in "${APP_DIR}"/scripts/desktop/*.desktop; do
+    [ -f "$src" ] || continue
+    dest="${HOME}/Desktop/$(basename "$src")"
+    sed "s|__APP_DIR__|${APP_DIR}|g" "$src" > "$dest"
+    # pcmanfm refuses to launch a .desktop that is not executable, and marks it
+    # trusted once it is.
+    chmod +x "$dest"
+    installed=$((installed + 1))
+  done
+  info "${installed} launcher(s) in ~/Desktop"
+
+  # Keybinds go in the *user* rc.xml. Safe because the Pi session runs
+  # `labwc -m` (--merge-config), so this augments the system bindings rather
+  # than replacing them — without -m, the first file found wins outright and
+  # this would silently delete Ctrl+Alt+T and everything else.
+  rc_user="${HOME}/.config/labwc/rc.xml"
+  if [ -f "$rc_user" ] && ! grep -q 'desktop-actions.sh kiosk' "$rc_user"; then
+    if pgrep -a labwc | grep -qE ' -m( |$)|--merge-config'; then
+      cp -n "$rc_user" "${rc_user}.pre-shortcuts" 2>/dev/null || true
+      binds="  <keyboard>\n"
+      binds="${binds}    <keybind key=\"C-A-k\"><action name=\"Execute\"><command>${APP_DIR}/scripts/desktop-actions.sh kiosk</command></action></keybind>\n"
+      binds="${binds}    <keybind key=\"C-A-s\"><action name=\"Execute\"><command>${APP_DIR}/scripts/desktop-actions.sh status</command></action></keybind>\n"
+      binds="${binds}  </keyboard>"
+      sed -i "s|</openbox_config>|${binds}\n</openbox_config>|" "$rc_user"
+      info "shortcuts: Ctrl+Alt+K reopens the kiosk, Ctrl+Alt+S shows status"
+    else
+      warn "labwc is not running with --merge-config; skipping keybinds so the system ones survive"
+    fi
+  fi
+
   step "Chromium kiosk"
 
   # Trixie ships `chromium`; older releases shipped `chromium-browser`. Install

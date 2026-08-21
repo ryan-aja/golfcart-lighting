@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Start Lighting Kiosk
+GenericName=Golf cart lighting UI
+Comment=Reopen the touchscreen interface after it has been closed
+Exec=__APP_DIR__/scripts/desktop-actions.sh kiosk
+Icon=video-display
+Terminal=false
+Categories=Utility;

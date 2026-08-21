@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Lighting Status
+Comment=Service, network, BC-204 and Art-Net health on one screen
+Exec=__APP_DIR__/scripts/desktop-actions.sh status
+Icon=utilities-system-monitor
+Terminal=false
+Categories=Utility;

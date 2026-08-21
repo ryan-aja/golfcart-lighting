@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Art-Net Doctor
+Comment=Check the link to the BC-204 and what universes it answers on
+Exec=__APP_DIR__/scripts/desktop-actions.sh doctor
+Icon=network-wired
+Terminal=false
+Categories=Utility;
