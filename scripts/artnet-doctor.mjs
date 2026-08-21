@@ -102,7 +102,12 @@ const replies = [];
 
 socket.on('message', (msg, rinfo) => {
   const reply = parseArtPollReply(msg);
-  if (reply) replies.push({ ...reply, from: rinfo.address });
+  if (!reply) return;
+  // We poll several addresses to find a node whose IP nobody is sure of, and a
+  // node answers each poll, so the same device arrives more than once.
+  const key = `${rinfo.address}|${reply.shortName}|${reply.ports.map((p) => p.outputUniverse).join(',')}`;
+  if (replies.some((r) => r.key === key)) return;
+  replies.push({ ...reply, from: rinfo.address, key });
 });
 
 socket.on('error', (err) => {
@@ -197,8 +202,29 @@ function report(replies) {
     info(`config expects:       ${[...wanted.keys()].sort((a, b) => a - b).join(', ')}`);
   }
 
-  if (artnetCfg.simulation) {
-    warn('config/artnet.json has simulation:true — the service sends nothing at all');
+  // The unit file's Environment= wins over the config file, so reading only
+  // artnet.json would cry wolf on a machine that is in fact sending.
+  let unitSim = null;
+  try {
+    const unit = fs.readFileSync('/etc/systemd/system/golfcart-lighting.service', 'utf8');
+    unitSim = /^Environment=LIGHTING_SIMULATION=(\S+)/m.exec(unit)?.[1] ?? null;
+  } catch {
+    /* not installed as a service — the config file is the whole story */
+  }
+
+  const simulating = unitSim !== null ? !/^(false|0|no)$/i.test(unitSim) : Boolean(artnetCfg.simulation);
+  if (simulating) {
+    bad('the service is in simulation mode — it sends no Art-Net at all');
+    info(
+      unitSim !== null
+        ? `the unit sets LIGHTING_SIMULATION=${unitSim}`
+        : 'config/artnet.json has simulation:true'
+    );
+  } else if (artnetCfg.simulation) {
+    info(
+      `config/artnet.json says simulation:true, but the unit overrides it ` +
+        `(LIGHTING_SIMULATION=${unitSim}) — real output is on`
+    );
   }
 
   if (BLINK !== null) blink();
