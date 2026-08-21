@@ -54,9 +54,14 @@ done
 [ -n "${BROWSER}" ] || { echo "no chromium binary found" >&2; exit 1; }
 echo "using ${BROWSER}"
 
+# --password-store=basic keeps Chromium away from the system keyring. With
+# lightdm autologin the login keyring is never unlocked — PAM never sees a
+# password — so asking for it puts an "Unlock Keyring" dialog over the kiosk on
+# every boot. The cart stores no credentials, so the basic store loses nothing.
 exec "${BROWSER}" \
   --kiosk \
   --ozone-platform-hint=auto \
+  --password-store=basic \
   --app="${URL}" \
   --incognito \
   --noerrdialogs \
