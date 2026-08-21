@@ -237,6 +237,22 @@ fi
 
 # ------------------------------------------------------ 4. systemd unit ---
 if [ "$DO_SERVICE" -eq 1 ]; then
+  step "Persistent journal"
+  # Without this the logs live in tmpfs and every power cycle destroys them,
+  # which is how the first BC-204 bring-up ended up with nothing to inspect.
+  jdrop=/etc/systemd/journald.conf.d/10-golfcart-persist.conf
+  if [ -f "${APP_DIR}/scripts/journald-persist.conf" ]; then
+    sudo install -D -m 0644 "${APP_DIR}/scripts/journald-persist.conf" "$jdrop"
+    sudo mkdir -p /var/log/journal
+    sudo systemd-tmpfiles --create --prefix /var/log/journal >/dev/null 2>&1 || true
+    sudo systemctl restart systemd-journald
+    storage="$(sudo systemd-analyze cat-config systemd/journald.conf 2>/dev/null \
+      | grep -E '^\s*Storage=' | tail -1 | cut -d= -f2)"
+    info "journal storage: ${storage:-unknown} (was volatile on a stock image)"
+  else
+    warn "scripts/journald-persist.conf missing — logs will not survive a reboot"
+  fi
+
   step "systemd service"
   src="${APP_DIR}/scripts/golfcart-lighting.service"
   [ -f "$src" ] || die "missing ${src}"
