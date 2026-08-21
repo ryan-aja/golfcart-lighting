@@ -1,7 +1,8 @@
 /**
  * Art-Net bring-up diagnostic.
  *
- *   node scripts/artnet-doctor.mjs [--iface eth0] [--wait 4] [--blink <universe>]
+ *   node scripts/artnet-doctor.mjs [--iface eth0] [--wait 4]
+ *                                  [--blink <universe>] [--sweep] [--dwell 6]
  *
  * Answers the question the controller itself cannot: is the node there, and
  * what is it actually listening to?
@@ -37,6 +38,8 @@ const argOf = (name, fallback) => {
 const IFACE = argOf('--iface', 'eth0');
 const WAIT_MS = Number(argOf('--wait', '4')) * 1000;
 const BLINK = args.includes('--blink') ? Number(argOf('--blink', '0')) : null;
+const SWEEP = args.includes('--sweep');
+const SWEEP_DWELL = Number(argOf('--dwell', '6')) * 1000;
 
 const readJson = (name) => {
   try {
@@ -174,32 +177,43 @@ function finish() {
 }
 
 function report(replies) {
-  head('Universe mapping');
+  head('Universe mapping — ADVISORY ONLY');
   const wanted = configuredUniverses();
   const listening = new Set(
     (replies ?? []).flatMap((r) => r.ports.filter((p) => p.isOutput).map((p) => p.outputUniverse))
   );
 
+  // Measured on a bincolor BC-204: its ArtPollReply advertised ports on
+  // universes 0/1/2/3 while its own web UI showed the ports configured for
+  // 2/6/10/14, and it kept saying 0/1/2/3 across reconfiguration and a power
+  // cycle. The reply is not evidence about this hardware, so nothing below is
+  // stated as a verdict. --sweep is the only test that cannot be lied to.
+  warn('a node may report universes it is not actually using — see the note below');
+
   for (const [universe, what] of wanted) {
     if (!replies) {
-      info(`config wants universe ${universe} for ${what} — unverified, nothing replied`);
+      info(`config wants universe ${universe} for ${what} — nothing replied, unverified`);
     } else if (listening.has(universe)) {
-      ok(`universe ${universe} (${what}) matches a port on the node`);
+      info(`universe ${universe} (${what}) — the node claims a port here`);
     } else {
-      bad(`universe ${universe} (${what}) is not bound to any port`);
+      info(`universe ${universe} (${what}) — the node does not claim a port here`);
       const near = [...listening].find((u) => Math.abs(u - universe) === 1);
       if (near !== undefined) {
         info(
-          `a port is on universe ${near}, one off. The BC-204 UI counts from 1 ` +
-            `while Art-Net counts from 0, so its box should read ${universe + 1}.`
+          `  it claims universe ${near}, one off. If that is real, the UI counts ` +
+            `from 1 while Art-Net counts from 0, so its box should read ${universe + 1}.`
         );
       }
     }
   }
 
   if (replies && listening.size) {
-    info(`node is listening on: ${[...listening].sort((a, b) => a - b).join(', ')}`);
-    info(`config expects:       ${[...wanted.keys()].sort((a, b) => a - b).join(', ')}`);
+    info(`node claims:    ${[...listening].sort((a, b) => a - b).join(', ')}`);
+    info(`config expects: ${[...wanted.keys()].sort((a, b) => a - b).join(', ')}`);
+    info('');
+    info('If those disagree, do not trust either until --sweep says otherwise:');
+    info(`  node scripts/artnet-doctor.mjs --sweep`);
+    info('  drives each universe in turn so you can see which output responds.');
   }
 
   // The unit file's Environment= wins over the config file, so reading only
@@ -228,7 +242,48 @@ function report(replies) {
   }
 
   if (BLINK !== null) blink();
+  else if (SWEEP) sweep();
   else console.log('');
+}
+
+/**
+ * Drive candidate universes one at a time so an operator can watch which
+ * physical output responds.
+ *
+ * This is the authoritative mapping test. A node can misreport its ports —
+ * one BC-204 did, consistently, across a reconfiguration and a power cycle —
+ * but it cannot fake a strip lighting up.
+ */
+async function sweep() {
+  const wanted = [...configuredUniverses().keys()];
+  // Cover the config, plus one either side, since an off-by-one in the node's
+  // UI is the usual reason nothing lights.
+  const candidates = [...new Set(wanted.flatMap((u) => [u - 1, u, u + 1]).filter((u) => u >= 0))]
+    .sort((a, b) => a - b);
+
+  head(`Sweep — ${candidates.length} universes, ${SWEEP_DWELL / 1000}s each`);
+  info('watch the fixtures and note which universe lights which output');
+  info('');
+
+  const tx = dgram.createSocket('udp4');
+  const full = Buffer.alloc(512, 255);
+  const dark = Buffer.alloc(512, 0);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  for (const u of candidates) {
+    const owner = configuredUniverses().get(u);
+    console.log(`  >>> universe ${u} FULL ON${owner ? `  (config: ${owner})` : ''}`);
+    const timer = setInterval(() => tx.send(buildArtDmxPacket(u, full, 1), ART_NET_PORT, target), 40);
+    await wait(SWEEP_DWELL);
+    clearInterval(timer);
+    for (let i = 0; i < 4; i++) tx.send(buildArtDmxPacket(u, dark, 0), ART_NET_PORT, target);
+    await wait(1500);
+  }
+
+  info('');
+  info('sweep complete, all universes blacked out');
+  tx.close();
+  console.log('');
 }
 
 /** Drive one universe to full for a few seconds, so a wrong map is visible. */

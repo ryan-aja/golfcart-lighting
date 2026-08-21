@@ -18,7 +18,17 @@ export function createUdpTransport({ host, port = 6454, bindAddress = null } = {
   let socket = null;
   const sequences = new Map(); // universe -> last sequence number
   let framesSent = 0;
+
+  // `lastError` reports whether output is failing *now*, so a send that
+  // succeeds clears it. Keeping it sticky was actively misleading during the
+  // first BC-204 bring-up: eth0 came up after the service did, so /api/status
+  // showed "send ENETUNREACH" for hours while frames were flowing perfectly,
+  // and the obvious reading was that output was broken. The counter and the
+  // timestamps keep the history that clearing would otherwise throw away.
   let lastError = null;
+  let lastErrorAt = null;
+  let lastSuccessAt = null;
+  let errorCount = 0;
 
   return {
     name: 'artnet-udp',
@@ -61,17 +71,29 @@ export function createUdpTransport({ host, port = 6454, bindAddress = null } = {
       const packet = buildArtDmxPacket(universe, data, sequence);
       socket.send(packet, port, host, (err) => {
         if (err) {
+          // Compare before assigning, or "changed" is never true.
+          const changed = err.message !== lastError;
           lastError = err.message;
-          log.error(`send failed for universe ${universe}:`, err.message);
+          lastErrorAt = Date.now();
+          errorCount += 1;
+          // A dead link fails every frame, which at 30fps is a torrent — the
+          // first bring-up put 1569 identical lines in the journal. Log the
+          // first occurrence and any change, then stay quiet.
+          if (changed) log.error(`send failed for universe ${universe}:`, err.message);
           return;
         }
         framesSent += 1;
+        lastSuccessAt = Date.now();
+        if (lastError) {
+          log.info(`output recovered after ${errorCount} failed send(s)`);
+          lastError = null;
+        }
         log.debug(`U${universe} seq ${sequence} sent (${packet.length} bytes)`);
       });
     },
 
     getStats() {
-      return { framesSent, lastError };
+      return { framesSent, lastError, lastErrorAt, lastSuccessAt, errorCount };
     },
 
     close() {
