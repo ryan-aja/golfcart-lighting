@@ -39,8 +39,15 @@ if [ -f "${PROFILE}" ]; then
 fi
 
 # Blank the cursor on a touch-only panel if unclutter is installed.
-# unclutter is X11-only, so this is a no-op under a Wayland session (labwc).
-command -v unclutter >/dev/null 2>&1 && unclutter -idle 0 &
+#
+# Only under X11: unclutter cannot talk to Wayland, and rather than exiting it
+# sits there having failed to open a display. That mattered because it also
+# inherited the lock descriptor and, outliving the browser, held the lock
+# forever — every later start then bailed as "already running" with no kiosk on
+# screen. 9>&- closes the lock in the child so nothing but Chromium can pin it.
+if [ -z "${WAYLAND_DISPLAY:-}" ] && command -v unclutter >/dev/null 2>&1; then
+  unclutter -idle 0 9>&- &
+fi
 
 # Trixie ships the binary as `chromium`; earlier releases used
 # `chromium-browser`. Prefer whichever exists rather than assuming.
