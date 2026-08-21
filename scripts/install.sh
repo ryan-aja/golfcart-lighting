@@ -241,14 +241,16 @@ if [ "$DO_SERVICE" -eq 1 ]; then
   src="${APP_DIR}/scripts/golfcart-lighting.service"
   [ -f "$src" ] || die "missing ${src}"
   tmp="$(mktemp)"
-  # Retarget the unit at this user and install path.
+  # Retarget the unit at this user and install path. XDG_RUNTIME_DIR has to
+  # match the real uid or theme audio cannot reach the session's PipeWire.
   sed -e "s|^User=pi$|User=${RUN_USER}|" \
       -e "s|/home/pi/golf-cart-lighting|${APP_DIR}|g" \
       -e "s|^ExecStart=/usr/bin/node|ExecStart=$(command -v node)|" \
+      -e "s|^Environment=XDG_RUNTIME_DIR=/run/user/1000$|Environment=XDG_RUNTIME_DIR=/run/user/$(id -u)|" \
       "$src" > "$tmp"
   sudo install -m 0644 "$tmp" /etc/systemd/system/golfcart-lighting.service
   rm -f "$tmp"
-  info "User=${RUN_USER}, WorkingDirectory=${APP_DIR}"
+  info "User=${RUN_USER} (uid $(id -u)), WorkingDirectory=${APP_DIR}"
   sudo systemctl daemon-reload
   sudo systemctl enable golfcart-lighting
 

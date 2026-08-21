@@ -16,6 +16,14 @@ Environment=LIGHTING_SIMULATION=false
 Environment=NODE_ENV=production
 Environment=LOG_LEVEL=info
 
+# Theme audio. This is a system service, so it gets no user-session
+# environment — and on Trixie the ALSA default is routed through the PipeWire
+# running in the desktop session. Without XDG_RUNTIME_DIR the player cannot
+# reach that socket and dies with "Couldn't open audio device: Unknown error
+# 524", which looks like a track finishing early rather than a failure.
+# The installer rewrites 1000 to the real uid of the user it installs for.
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+
 Restart=always
 RestartSec=3
 
