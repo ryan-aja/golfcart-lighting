@@ -76,7 +76,18 @@ warn() { printf '\033[1;33m    warning: %s\033[0m\n' "$1"; }
 die()  { printf '\033[1;31m    error: %s\033[0m\n' "$1" >&2; exit 1; }
 
 [ "$(id -u)" -ne 0 ] || die "run as your normal user, not root — the kiosk autostart must land in a real user's home"
-sudo -v || die "this user needs sudo access"
+
+# `sudo -v` cannot be used as the check: it validates credentials with no
+# command to match, so it demands a password even where NOPASSWD grants
+# everything — which fails an otherwise fine unattended run over SSH. Probe
+# with a real command instead, and only prompt when there is a tty to type at.
+if sudo -n true 2>/dev/null; then
+  :
+elif [ -t 0 ]; then
+  sudo -v || die "this user needs sudo access"
+else
+  die "sudo needs a password and there is no terminal to enter it — run this from a session on the Pi, or grant NOPASSWD"
+fi
 
 step "Preflight"
 info "user:     ${RUN_USER}"
