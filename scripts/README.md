@@ -29,12 +29,21 @@ Assumed install path: `/home/pi/golf-cart-lighting`. Adjust the paths in
 
 ## 1. Node
 
-Raspberry Pi OS ships an old Node. Install a current LTS from NodeSource:
+`package.json` requires Node >= 20.11. On Trixie the distro package already
+satisfies that, so prefer it:
+
+```bash
+sudo apt-get install -y nodejs npm
+node --version   # Trixie ships v20.19
+```
+
+Do **not** reach for NodeSource on Trixie — it publishes no `trixie` suite, and
+`setup_22.x` fails with a 404. Only use it on an older release whose apt Node
+is below 20.11:
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
-node --version   # expect v22.x
 ```
 
 ## 2. Application
@@ -101,15 +110,45 @@ service restart never leaves the lights latched on.
 ## 6. Chromium kiosk
 
 ```bash
-sudo apt-get install -y chromium-browser unclutter
+sudo apt-get install -y chromium unclutter
 chmod +x scripts/start-kiosk.sh
+```
 
+The package is `chromium` on Trixie and `chromium-browser` on older releases;
+Trixie carries a `chromium-browser` package too, but it is a stale build
+several majors behind. `start-kiosk.sh` resolves whichever binary exists.
+
+Then register the autostart for the compositor actually in use. Raspberry Pi
+OS Trixie runs labwc under Wayland, which does **not** read
+`~/.config/autostart`:
+
+```bash
+# labwc (Trixie default)
+mkdir -p ~/.config/labwc
+echo "$PWD/scripts/start-kiosk.sh &" >> ~/.config/labwc/autostart
+chmod +x ~/.config/labwc/autostart
+
+# X11 sessions only
 mkdir -p ~/.config/autostart
 cp scripts/kiosk.desktop ~/.config/autostart/
 ```
 
-Reboot. The desktop session autostarts `start-kiosk.sh`, which waits for
-`/healthz` before opening Chromium so the panel never flashes an error page.
+Register **one** of them. Two autostart entries launch two kiosks that then
+race over the Chromium profile lock — `start-kiosk.sh` holds an flock and the
+loser exits, but there is no reason to create the race.
+
+The kiosk also needs the Pi to reach a desktop session with autologin:
+
+```bash
+sudo raspi-config nonint do_boot_behaviour B4
+```
+
+Note the polarity if you script this: `raspi-config nonint get_boot_cli`
+echoes `1` for a graphical boot and `0` for CLI.
+
+Reboot. The session autostarts `start-kiosk.sh`, which waits for `/healthz`
+before opening Chromium so the panel never flashes an error page. `unclutter`
+is X11-only, so the cursor stays visible under Wayland.
 
 Test it manually first:
 
@@ -122,6 +161,10 @@ Test it manually first:
 ```bash
 sudo apt-get install -y avahi-daemon
 sudo hostnamectl set-hostname golfcart
+
+# hostnamectl does not touch /etc/hosts. Skip this and every later sudo call
+# stalls on "unable to resolve host golfcart".
+sudo sed -i 's/^\(127\.0\.1\.1\s\+\).*/\1golfcart/' /etc/hosts
 ```
 
 The UI is then reachable from a phone at `http://golfcart.local:3100`. It is
