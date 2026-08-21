@@ -13,9 +13,19 @@ import { createUdpTransport } from '../server/services/artnet/udpTransport.js';
  * TEST-NET-3 (203.0.113.0/24, RFC 5737) bound to loopback is guaranteed
  * unroutable, which makes the failure path deterministic rather than dependent
  * on whatever network the suite happens to run on.
+ *
+ * The *errno* is not asserted: the same unroutable send is ENETUNREACH on
+ * Windows and EINVAL on the Pi. What the transport promises is that a failure
+ * is recorded and not counted as a frame, not which code the kernel chose.
  */
 
 const UNROUTABLE = { host: '203.0.113.1', port: 6454, bindAddress: '127.0.0.1' };
+
+/** A send failure was recorded, whatever the platform called it. */
+function assertRecordedFailure(stats) {
+  assert.equal(typeof stats.lastError, 'string');
+  assert.ok(stats.lastError.length > 0, 'the failure message is kept');
+}
 
 /** A throwaway UDP listener, so sends have somewhere real to land. */
 function listener() {
@@ -60,7 +70,7 @@ test('a failed send is counted as an error, never as a frame sent', async () => 
 
   const stats = tx.getStats();
   assert.equal(stats.errorCount, 1, 'the failure was counted');
-  assert.match(stats.lastError, /ENETUNREACH|EHOSTUNREACH|ENETDOWN/);
+  assertRecordedFailure(stats);
   assert.ok(stats.lastErrorAt, 'the failure is timestamped');
   assert.equal(stats.framesSent, 0, 'a failed send must not count as sent');
   assert.equal(stats.lastSuccessAt, null);
@@ -80,7 +90,7 @@ test('repeated identical failures accumulate without re-reporting a new fault', 
   const stats = tx.getStats();
   assert.equal(stats.errorCount, 5, 'every failure counted');
   assert.equal(stats.framesSent, 0);
-  assert.match(stats.lastError, /ENETUNREACH|EHOSTUNREACH|ENETDOWN/);
+  assertRecordedFailure(stats);
 
   await tx.close();
 });
