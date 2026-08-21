@@ -327,7 +327,13 @@ if [ "$DO_KIOSK" -eq 1 ]; then
   step "Touchscreen: deliver real touch events"
   rc_user="${HOME}/.config/labwc/rc.xml"
   rc_system=/etc/xdg/labwc/rc.xml
-  if [ -f "$rc_user" ] && grep -q 'mouseEmulation="yes"' "$rc_user"; then
+  # Order matters: the system file always keeps mouseEmulation="yes", so a
+  # check against it must come last or a re-run overwrites a user file that was
+  # already correct.
+  if [ -f "$rc_user" ] && grep -q 'mouseEmulation="no"' "$rc_user" \
+     && ! grep -q 'mouseEmulation="yes"' "$rc_user"; then
+    info "already disabled"
+  elif [ -f "$rc_user" ] && grep -q 'mouseEmulation="yes"' "$rc_user"; then
     cp -n "$rc_user" "${rc_user}.orig" 2>/dev/null || true
     sed -i 's/mouseEmulation="yes"/mouseEmulation="no"/g' "$rc_user"
     info "mouseEmulation disabled in ~/.config/labwc/rc.xml"
@@ -340,8 +346,6 @@ if [ "$DO_KIOSK" -eq 1 ]; then
       printf '</openbox_config>\n'
     } > "$rc_user"
     info "created ~/.config/labwc/rc.xml with mouseEmulation off"
-  elif [ -f "$rc_user" ] && grep -q 'mouseEmulation="no"' "$rc_user"; then
-    info "already disabled"
   else
     warn "no labwc <touch> config found — if drag-to-scroll fails, check mouseEmulation"
   fi
