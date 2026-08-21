@@ -310,6 +310,42 @@ fi
 
 # ----------------------------------------------------- 5. Chromium kiosk ---
 if [ "$DO_KIOSK" -eq 1 ]; then
+  # Touch has to arrive as touch, not as an emulated mouse.
+  #
+  # Raspberry Pi OS ships labwc with mouseEmulation="yes" for the DSI panels,
+  # in /usr/lib/../xdg/labwc/rc.xml and again in the generated user rc.xml.
+  # With it on, the compositor rewrites every touch into a pointer event before
+  # any client sees it, so a browser gets pointerType "mouse" and no
+  # touchstart at all. Taps, sliders and dragging a scrollbar still work —
+  # those are all things a mouse does — but drag-to-scroll is impossible,
+  # because a mouse drag has never scrolled a container.
+  #
+  # Measured on this panel: with emulation on, a swipe produced 175
+  # pointermove:mouse and zero touch events; with it off, the same swipe
+  # produced 74 touchmove and scrolled the list 66 times. No amount of CSS or
+  # Chromium flags can fix it from above.
+  step "Touchscreen: deliver real touch events"
+  rc_user="${HOME}/.config/labwc/rc.xml"
+  rc_system=/etc/xdg/labwc/rc.xml
+  if [ -f "$rc_user" ] && grep -q 'mouseEmulation="yes"' "$rc_user"; then
+    cp -n "$rc_user" "${rc_user}.orig" 2>/dev/null || true
+    sed -i 's/mouseEmulation="yes"/mouseEmulation="no"/g' "$rc_user"
+    info "mouseEmulation disabled in ~/.config/labwc/rc.xml"
+  elif [ -f "$rc_system" ] && grep -q 'mouseEmulation="yes"' "$rc_system"; then
+    # No user override yet: create one carrying just the touch lines, flipped.
+    mkdir -p "$(dirname "$rc_user")"
+    {
+      printf '<?xml version="1.0"?>\n<openbox_config xmlns="http://openbox.org/3.4/rc">\n'
+      grep '<touch ' "$rc_system" | sed 's/mouseEmulation="yes"/mouseEmulation="no"/g'
+      printf '</openbox_config>\n'
+    } > "$rc_user"
+    info "created ~/.config/labwc/rc.xml with mouseEmulation off"
+  elif [ -f "$rc_user" ] && grep -q 'mouseEmulation="no"' "$rc_user"; then
+    info "already disabled"
+  else
+    warn "no labwc <touch> config found — if drag-to-scroll fails, check mouseEmulation"
+  fi
+
   step "Chromium kiosk"
 
   # Trixie ships `chromium`; older releases shipped `chromium-browser`. Install

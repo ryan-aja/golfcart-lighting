@@ -215,6 +215,7 @@ mobile build.
 | Slow boot, repeated "disconnecting from network" | `systemd-analyze blame \| head` — if `NetworkManager-wait-online` is near 60s and `systemctl --failed` lists it, Wi-Fi power save is losing the first DHCP exchange. `nmcli con mod <wifi> 802-11-wireless.powersave 2` |
 | Kiosk shows an "Unlock Keyring" dialog | autologin never unlocks the login keyring; the kiosk passes `--password-store=basic` to avoid asking. Check the flag survived a `git pull` |
 | Two kiosks fighting over the screen | only one autostart entry should exist — labwc reads `~/.config/labwc/autostart`, not `~/.config/autostart` |
+| Taps work but the card list will not scroll by dragging | labwc is emulating a mouse. `grep mouseEmulation ~/.config/labwc/rc.xml` — it must be `"no"`. Raspberry Pi OS ships `"yes"`, which rewrites touch into pointer events before any app sees them |
 | Port already in use | change `httpPort` in `config/network.json`, or set `PORT=` in the unit |
 | THEME button greyed out | `journalctl -u golfcart-lighting \| grep audio` — either no player (`sudo apt-get install -y mpg123 alsa-utils`) or no file (`npm run make-theme`) |
 | THEME button works but silent | audio is going to HDMI: `sudo raspi-config` → System Options → Audio → Headphones. Then check the level in `alsamixer` |
