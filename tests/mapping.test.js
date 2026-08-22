@@ -105,16 +105,26 @@ test('the initial all-off state produces an entirely zero universe', () => {
   assert.ok(universe.every((value) => value === 0), 'expected every DMX channel to be 0');
 });
 
-test('a hidden zone nobody has touched stays at zero', () => {
-  const hidden = lightingConfig.zones.find((z) => z.hidden);
-  assert.ok(hidden, 'expected the config to keep a hidden zone reserved');
+test('a zone nobody has touched stays at zero while others are driven', () => {
+  // Deliberately not keyed on `hidden`: whether a zone is shown in the UI has
+  // nothing to do with whether it renders, and tying the test to that flag made
+  // it fail the moment a zone was unhidden in config.
+  const driven = new Set(['headlights', 'accent']);
+  const untouched = lightingConfig.zones.find(
+    (z) => !driven.has(z.id) && Number.isFinite(z.channel)
+  );
+  assert.ok(untouched, 'expected a single-channel zone that this test does not drive');
 
   const state = createInitialState(lightingConfig);
   state.headlights = { enabled: true, brightness: 100 };
   state.accent = { enabled: true, color: { r: 255, g: 255, b: 255 }, brightness: 100 };
 
   const universe = renderDmxUniverses(state, lightingConfig).get(DMX_UNIVERSE);
-  assert.equal(channel(universe, hidden.channel), 0);
+  assert.equal(
+    channel(universe, untouched.channel),
+    0,
+    `zone "${untouched.id}" on channel ${untouched.channel} should be dark`
+  );
 });
 
 test('scaleColorComponent combines component, brightness and output ceiling', () => {

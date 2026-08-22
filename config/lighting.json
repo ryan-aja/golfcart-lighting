@@ -46,7 +46,7 @@
       "universe": 0,
       "channel": 8,
       "maxOutput": 255,
-      "hidden": true,
+      "hidden": false,
       "defaults": {
         "enabled": false,
         "brightness": 100
