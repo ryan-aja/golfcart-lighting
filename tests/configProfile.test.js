@@ -21,16 +21,21 @@ const profiles = fs.existsSync(PROFILES_DIR)
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
-test('profile.json ships inert, so pulling this code cannot switch a rig', () => {
-  const file = path.join(CONFIG_DIR, 'profile.json');
-  assert.ok(fs.existsSync(file), 'config/profile.json should exist as documentation');
+test('the rig selection is per-machine, not something upgrades fight over', () => {
+  // profile.json must stay untracked: it is a local choice, and tracking it
+  // means an upgrade either refuses to pull past the local edit or silently
+  // repoints the machine at another rig. The example is what ships.
+  const example = path.join(CONFIG_DIR, 'profile.example.json');
+  assert.ok(fs.existsSync(example), 'config/profile.example.json should ship as documentation');
 
-  const active = (readJson(file).active ?? '').trim();
-  assert.equal(
-    active,
-    '',
-    'the committed profile.json must select nothing — a Pi opts in locally, ' +
-      'otherwise a git pull would repoint an installed cart at another rig'
+  const active = (readJson(example).active ?? '').trim();
+  assert.equal(active, '', 'the example must select nothing');
+
+  const ignore = fs.readFileSync(path.join(CONFIG_DIR, '..', '.gitignore'), 'utf8');
+  assert.match(
+    ignore,
+    /^config\/profile\.json$/m,
+    'config/profile.json must be gitignored so a machine keeps its own selection'
   );
 });
 

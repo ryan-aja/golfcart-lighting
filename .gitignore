@@ -10,3 +10,8 @@ client/dist/
 # commercial recording could not be redistributed here anyway.
 assets/audio/*
 !assets/audio/README.md
+
+# Which rig this particular machine is wired for. Deliberately untracked: it is
+# a per-machine choice, and tracking it would mean every upgrade either fought
+# the local edit or silently repointed the machine at another rig.
+config/profile.json

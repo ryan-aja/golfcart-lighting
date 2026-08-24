@@ -134,7 +134,7 @@ config/
 ├── lighting.json          the golf cart (used when no profile is selected)
 ├── scenes.json
 ├── audio.json
-├── profile.json           selects a profile, empty by default
+├── profile.example.json   copy to profile.json to select a rig
 └── profiles/
     └── lt890/
         ├── lighting.json  4 x LT890, 12 channels each, one universe
@@ -146,19 +146,24 @@ Anything a profile does **not** override falls back to the flat file in
 `config/`, so a rig only states its differences — the `lt890` profile has no
 `audio.json`, and gets the shared one.
 
-Select one by editing `config/profile.json` on that machine:
+Select one on that machine:
 
-```json
-{ "active": "lt890" }
+```bash
+cp config/profile.example.json config/profile.json
+# then set "active": "lt890"
 ```
 
 or, for a one-off run, `LIGHTING_PROFILE=lt890 npm start`.
 
-The committed `profile.json` deliberately selects **nothing**, so pulling this
-code can never repoint an installed cart at another rig — each machine opts in
-locally. A profile name that does not exist is a hard startup failure rather
-than a silent fallback, because falling back would drive one rig's fixtures
-with another's channel map.
+`config/profile.json` is **gitignored on purpose**. The rig a machine is wired
+for is a property of that machine, not of the code: tracking it would mean
+every upgrade either refused to pull past the local edit, or quietly repointed
+an installed cart at another rig. A machine with no `profile.json` runs the
+flat `config/` files, which is what both golf carts do.
+
+A profile name that does not resolve is a hard startup failure listing what
+does exist, rather than a silent fallback — falling back would drive one rig's
+fixtures with another's channel map.
 
 ### Current DMX mapping (universe 0 → 9-channel PWM decoder)
 
