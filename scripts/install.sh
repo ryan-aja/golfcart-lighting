@@ -75,6 +75,30 @@ info() { printf '    %s\n' "$1"; }
 warn() { printf '\033[1;33m    warning: %s\033[0m\n' "$1"; }
 die()  { printf '\033[1;31m    error: %s\033[0m\n' "$1" >&2; exit 1; }
 
+# A freshly imaged Pi is usually already running unattended-upgrades or the
+# first-boot update when someone starts this, and apt simply exits 100 with
+# "Could not get lock /var/lib/dpkg/lock-frontend" — which killed the first run
+# on the second cart. Waiting is almost always right; the other process is
+# transient and finishes on its own.
+apt_wait() {
+  local waited=0
+  while sudo -n fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock \
+        /var/cache/apt/archives/lock >/dev/null 2>&1; do
+    [ "$waited" -eq 0 ] && info "another apt/dpkg process holds the lock — waiting"
+    sleep 5
+    waited=$((waited + 5))
+    if [ "$waited" -ge 600 ]; then
+      warn "dpkg lock still held after 10 minutes; giving up on waiting"
+      return 0
+    fi
+  done
+  [ "$waited" -gt 0 ] && info "lock released after ${waited}s, continuing"
+  return 0
+}
+
+# Every apt call goes through here so none of them can lose that race.
+apt_get() { apt_wait; command sudo apt-get "$@"; }
+
 [ "$(id -u)" -ne 0 ] || die "run as your normal user, not root — the kiosk autostart must land in a real user's home"
 
 # `sudo -v` cannot be used as the check: it validates credentials with no
@@ -112,8 +136,8 @@ if [ "$DO_NODE" -eq 1 ]; then
     info "found: $(command -v node >/dev/null 2>&1 && node --version || echo none)"
     cand="$(apt-cache policy nodejs 2>/dev/null | awk '/Candidate:/{print $2}')"
     info "apt candidate: ${cand:-none}"
-    sudo apt-get update -qq
-    sudo apt-get install -y nodejs npm
+    apt_get update -qq
+    apt_get install -y nodejs npm
     if node_ok; then
       info "installed $(node --version) from apt"
     else
@@ -121,13 +145,13 @@ if [ "$DO_NODE" -eq 1 ]; then
       info "apt version too old, trying NodeSource for ${VERSION_CODENAME}"
       if curl -fsI "https://deb.nodesource.com/node_${NODE_MAJOR}.x/dists/${VERSION_CODENAME}/Release" >/dev/null 2>&1; then
         curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | sudo -E bash -
-        sudo apt-get install -y nodejs
+        apt_get install -y nodejs
       else
         die "no Node >= ${NODE_MIN} available: apt has ${cand:-none} and NodeSource has no ${VERSION_CODENAME} suite"
       fi
     fi
   fi
-  command -v npm >/dev/null 2>&1 || sudo apt-get install -y npm
+  command -v npm >/dev/null 2>&1 || apt_get install -y npm
   info "node $(node --version), npm $(npm --version)"
 fi
 
@@ -141,7 +165,7 @@ if [ "$DO_APP" -eq 1 ]; then
     git -C "${APP_DIR}" pull --ff-only origin "${BRANCH}"
   else
     [ -e "${APP_DIR}" ] && die "${APP_DIR} exists but is not a git clone"
-    command -v git >/dev/null 2>&1 || sudo apt-get install -y git
+    command -v git >/dev/null 2>&1 || apt_get install -y git
     git clone --branch "${BRANCH}" "${REPO_URL}" "${APP_DIR}"
   fi
 
@@ -160,7 +184,7 @@ fi
 # wav plus alsamixer for setting the level.
 if [ "$DO_AUDIO" -eq 1 ]; then
   step "Theme audio"
-  if ! sudo apt-get install -y mpg123 alsa-utils; then
+  if ! apt_get install -y mpg123 alsa-utils; then
     warn "no audio player installed - the THEME button will stay disabled"
   fi
 
@@ -394,11 +418,11 @@ if [ "$DO_KIOSK" -eq 1 ]; then
   # whichever this release actually has — on Trixie the chromium-browser
   # package is a stale compatibility build several major versions behind.
   if apt-cache policy chromium 2>/dev/null | grep -q 'Candidate: [0-9]'; then
-    sudo apt-get install -y chromium
+    apt_get install -y chromium
   else
-    sudo apt-get install -y chromium-browser
+    apt_get install -y chromium-browser
   fi
-  sudo apt-get install -y unclutter || warn "unclutter unavailable (X11 only) — cursor will stay visible"
+  apt_get install -y unclutter || warn "unclutter unavailable (X11 only) — cursor will stay visible"
 
   chmod +x "${APP_DIR}/scripts/start-kiosk.sh"
 
@@ -460,7 +484,7 @@ fi
 # ------------------------------------------------- 6. Hostname / mDNS ---
 if [ "$DO_HOSTNAME" -eq 1 ]; then
   step "Hostname and mDNS"
-  sudo apt-get install -y avahi-daemon
+  apt_get install -y avahi-daemon
   if [ "$(hostnamectl --static)" = "${HOSTNAME_NEW}" ]; then
     info "hostname already ${HOSTNAME_NEW}"
   else
