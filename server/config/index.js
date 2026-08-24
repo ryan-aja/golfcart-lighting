@@ -22,8 +22,51 @@ export const ROOT_DIR = path.resolve(here, '..', '..');
 export const CONFIG_DIR = path.join(ROOT_DIR, 'config');
 export const CLIENT_DIST_DIR = path.join(ROOT_DIR, 'client', 'dist');
 
+export const PROFILES_DIR = path.join(CONFIG_DIR, 'profiles');
+
+/**
+ * Which installation this machine is wired for.
+ *
+ * The same code drives more than one rig — a golf cart with a pixel controller,
+ * a set of DMX fixtures — and they differ only in configuration. A profile is a
+ * directory under config/profiles/ holding whichever config files that
+ * installation overrides; anything it does not override falls back to the flat
+ * file in config/. Selecting one is a single line in config/profile.json, so a
+ * Pi is committed to a rig once and never thinks about it again.
+ *
+ * No profile.json (or an empty "active") means the flat config/ files, which is
+ * exactly how this behaved before profiles existed.
+ */
+function activeProfile() {
+  const fromEnv = process.env.LIGHTING_PROFILE;
+  if (fromEnv !== undefined) return fromEnv.trim() || null;
+
+  const file = path.join(CONFIG_DIR, 'profile.json');
+  if (!fs.existsSync(file)) return null;
+  try {
+    return (JSON.parse(fs.readFileSync(file, 'utf8')).active ?? '').trim() || null;
+  } catch (err) {
+    // Falling back silently here would run the wrong rig's channel map, so say
+    // so loudly; validateConfig turns a named-but-missing profile into a hard
+    // failure below.
+    log.error(`config/profile.json is unreadable (${err.message})`);
+    throw new Error(`Unable to parse ${file}: ${err.message}`);
+  }
+}
+
+export const ACTIVE_PROFILE = activeProfile();
+
+/** Profile copy of a config file if it has one, otherwise the shared one. */
+function resolveConfigPath(name) {
+  if (ACTIVE_PROFILE) {
+    const override = path.join(PROFILES_DIR, ACTIVE_PROFILE, name);
+    if (fs.existsSync(override)) return override;
+  }
+  return path.join(CONFIG_DIR, name);
+}
+
 function readJson(name) {
-  const file = path.join(CONFIG_DIR, name);
+  const file = resolveConfigPath(name);
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (err) {
@@ -37,8 +80,7 @@ function readJson(name) {
  * without the new file still starts.
  */
 function readJsonOptional(name, fallback) {
-  const file = path.join(CONFIG_DIR, name);
-  if (!fs.existsSync(file)) {
+  if (!fs.existsSync(resolveConfigPath(name))) {
     log.debug(`${name} not present - using defaults`);
     return fallback;
   }
@@ -73,6 +115,18 @@ function firstDefined(...values) {
 }
 
 export function loadConfig() {
+  // A typo'd profile name must not quietly fall back to the shared config —
+  // that would drive one rig's fixtures with another rig's channel map.
+  if (ACTIVE_PROFILE && !fs.existsSync(path.join(PROFILES_DIR, ACTIVE_PROFILE))) {
+    const available = fs.existsSync(PROFILES_DIR)
+      ? fs.readdirSync(PROFILES_DIR).join(', ') || '(none)'
+      : '(no profiles directory)';
+    throw new Error(
+      `config profile "${ACTIVE_PROFILE}" does not exist in ${PROFILES_DIR}. Available: ${available}`
+    );
+  }
+  if (ACTIVE_PROFILE) log.info(`using config profile "${ACTIVE_PROFILE}"`);
+
   const network = readJson('network.json');
   const artnetFile = readJson('artnet.json');
   const lighting = readJson('lighting.json');
@@ -89,6 +143,7 @@ export function loadConfig() {
   };
 
   const config = {
+    profile: ACTIVE_PROFILE,
     network: {
       ...network,
       httpPort: firstDefined(envInt('PORT'), network.httpPort, 3100),

@@ -1,0 +1,60 @@
+{
+  "scenes": [
+    {
+      "id": "all-off",
+      "name": "All Off",
+      "zones": {
+        "fixture-1": { "enabled": false },
+        "fixture-1-white": { "enabled": false },
+        "fixture-2": { "enabled": false },
+        "fixture-2-white": { "enabled": false },
+        "fixture-3": { "enabled": false },
+        "fixture-3-white": { "enabled": false },
+        "fixture-4": { "enabled": false },
+        "fixture-4-white": { "enabled": false }
+      }
+    },
+    {
+      "id": "white",
+      "name": "White",
+      "zones": {
+        "fixture-1-white": { "enabled": true, "brightness": 100 },
+        "fixture-2-white": { "enabled": true, "brightness": 100 },
+        "fixture-3-white": { "enabled": true, "brightness": 100 },
+        "fixture-4-white": { "enabled": true, "brightness": 100 },
+        "fixture-1": { "enabled": false },
+        "fixture-2": { "enabled": false },
+        "fixture-3": { "enabled": false },
+        "fixture-4": { "enabled": false }
+      }
+    },
+    {
+      "id": "colour-wash",
+      "name": "Colour Wash",
+      "zones": {
+        "fixture-1": { "enabled": true, "brightness": 100, "color": { "r": 255, "g": 0, "b": 60 } },
+        "fixture-2": { "enabled": true, "brightness": 100, "color": { "r": 255, "g": 90, "b": 0 } },
+        "fixture-3": { "enabled": true, "brightness": 100, "color": { "r": 0, "g": 120, "b": 255 } },
+        "fixture-4": { "enabled": true, "brightness": 100, "color": { "r": 140, "g": 0, "b": 255 } },
+        "fixture-1-white": { "enabled": false },
+        "fixture-2-white": { "enabled": false },
+        "fixture-3-white": { "enabled": false },
+        "fixture-4-white": { "enabled": false }
+      }
+    },
+    {
+      "id": "dim",
+      "name": "Dim",
+      "zones": {
+        "fixture-1": { "enabled": true, "brightness": 25, "color": { "r": 255, "g": 170, "b": 90 } },
+        "fixture-2": { "enabled": true, "brightness": 25, "color": { "r": 255, "g": 170, "b": 90 } },
+        "fixture-3": { "enabled": true, "brightness": 25, "color": { "r": 255, "g": 170, "b": 90 } },
+        "fixture-4": { "enabled": true, "brightness": 25, "color": { "r": 255, "g": 170, "b": 90 } },
+        "fixture-1-white": { "enabled": false },
+        "fixture-2-white": { "enabled": false },
+        "fixture-3-white": { "enabled": false },
+        "fixture-4-white": { "enabled": false }
+      }
+    }
+  ]
+}

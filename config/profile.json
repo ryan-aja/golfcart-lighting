@@ -1,0 +1,4 @@
+{
+  "_comment": "Which installation this machine is wired for. Set 'active' to a directory name under config/profiles/ to load that rig's config; leave it empty to use the flat files in config/ (the golf cart). Overridable with LIGHTING_PROFILE for a one-off run.",
+  "active": ""
+}

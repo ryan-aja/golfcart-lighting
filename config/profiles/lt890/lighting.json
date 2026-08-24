@@ -1,0 +1,95 @@
+{
+  "_comment": "Four LT890 fixtures on one universe, 12 channels each, daisy-chained on a single DMX line fed by an Art-Net node at network.json bc204.address. Fixture N starts at channel (N-1)*12+1: 1, 13, 25, 37. Only the RGB and white channels are mapped below; the rest of each fixture's 12 are left unassigned deliberately - add zones for them once the LT890 channel chart is confirmed.",
+  "dmxUniverse": 0,
+  "zones": [
+    {
+      "id": "fixture-1",
+      "name": "Fixture 1",
+      "type": "rgb",
+      "universe": 0,
+      "channels": { "r": 1, "g": 2, "b": 3 },
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "color": { "r": 255, "g": 255, "b": 255 },
+        "brightness": 100
+      }
+    },
+    {
+      "id": "fixture-1-white",
+      "name": "Fixture 1 White",
+      "type": "dimmer",
+      "universe": 0,
+      "channel": 4,
+      "maxOutput": 255,
+      "defaults": { "enabled": false, "brightness": 100 }
+    },
+    {
+      "id": "fixture-2",
+      "name": "Fixture 2",
+      "type": "rgb",
+      "universe": 0,
+      "channels": { "r": 13, "g": 14, "b": 15 },
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "color": { "r": 255, "g": 255, "b": 255 },
+        "brightness": 100
+      }
+    },
+    {
+      "id": "fixture-2-white",
+      "name": "Fixture 2 White",
+      "type": "dimmer",
+      "universe": 0,
+      "channel": 16,
+      "maxOutput": 255,
+      "defaults": { "enabled": false, "brightness": 100 }
+    },
+    {
+      "id": "fixture-3",
+      "name": "Fixture 3",
+      "type": "rgb",
+      "universe": 0,
+      "channels": { "r": 25, "g": 26, "b": 27 },
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "color": { "r": 255, "g": 255, "b": 255 },
+        "brightness": 100
+      }
+    },
+    {
+      "id": "fixture-3-white",
+      "name": "Fixture 3 White",
+      "type": "dimmer",
+      "universe": 0,
+      "channel": 28,
+      "maxOutput": 255,
+      "defaults": { "enabled": false, "brightness": 100 }
+    },
+    {
+      "id": "fixture-4",
+      "name": "Fixture 4",
+      "type": "rgb",
+      "universe": 0,
+      "channels": { "r": 37, "g": 38, "b": 39 },
+      "maxOutput": 255,
+      "defaults": {
+        "enabled": false,
+        "color": { "r": 255, "g": 255, "b": 255 },
+        "brightness": 100
+      }
+    },
+    {
+      "id": "fixture-4-white",
+      "name": "Fixture 4 White",
+      "type": "dimmer",
+      "universe": 0,
+      "channel": 40,
+      "maxOutput": 255,
+      "defaults": { "enabled": false, "brightness": 100 }
+    }
+  ],
+  "pixelZones": []
+}

@@ -113,13 +113,52 @@ requires touching UI or service code.
 | `lighting.json` | zones, DMX channels, universes, pixel counts, output limits |
 | `scenes.json` | stored scenes |
 | `audio.json` | theme audio file candidates, volume, player override |
+| `profile.json` | which installation this machine is wired for (see below) |
 
 Environment overrides: `PORT`, `LIGHTING_SIMULATION`, `ARTNET_HOST`,
 `ARTNET_PORT`, `LIGHTING_FRAME_RATE`, `ARTNET_KEEPALIVE_MS`, `LOG_LEVEL`,
-`AUDIO_ENABLED`, `AUDIO_FILE`, `AUDIO_VOLUME`, `AUDIO_PLAYER`, `AUDIO_LOOP`.
+`AUDIO_ENABLED`, `AUDIO_FILE`, `AUDIO_VOLUME`, `AUDIO_PLAYER`, `AUDIO_LOOP`,
+`LIGHTING_PROFILE`.
 
 `audio.json` is the one optional config file: if it is missing the loader falls
 back to built-in defaults, so a Pi that pulls this code without it still starts.
+
+### Profiles — running a different rig from the same code
+
+The same controller drives more than one installation, differing only in
+configuration. A **profile** is a directory under `config/profiles/` holding
+whichever config files that rig overrides:
+
+```
+config/
+├── lighting.json          the golf cart (used when no profile is selected)
+├── scenes.json
+├── audio.json
+├── profile.json           selects a profile, empty by default
+└── profiles/
+    └── lt890/
+        ├── lighting.json  4 x LT890, 12 channels each, one universe
+        ├── scenes.json
+        └── network.json
+```
+
+Anything a profile does **not** override falls back to the flat file in
+`config/`, so a rig only states its differences — the `lt890` profile has no
+`audio.json`, and gets the shared one.
+
+Select one by editing `config/profile.json` on that machine:
+
+```json
+{ "active": "lt890" }
+```
+
+or, for a one-off run, `LIGHTING_PROFILE=lt890 npm start`.
+
+The committed `profile.json` deliberately selects **nothing**, so pulling this
+code can never repoint an installed cart at another rig — each machine opts in
+locally. A profile name that does not exist is a hard startup failure rather
+than a silent fallback, because falling back would drive one rig's fixtures
+with another's channel map.
 
 ### Current DMX mapping (universe 0 → 9-channel PWM decoder)
 
