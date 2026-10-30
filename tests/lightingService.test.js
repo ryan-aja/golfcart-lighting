@@ -207,7 +207,7 @@ test('the scanner zone renders onto universe 6 and leaves the other zones alone'
 
   // The other pixel zone stays dark and the DMX universe is unaffected.
   assert.ok(artnet.get(2).every((b) => b === 0));
-  assert.equal(artnet.get(config.lighting.dmxUniverse)[6], 255, 'headlights still on channel 7');
+  assert.equal(artnet.get(config.lighting.dmxUniverse)[0], 255, 'headlights still on channel 1');
 });
 
 test('scanner brightness scales the whole bar', () => {

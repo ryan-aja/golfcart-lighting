@@ -6,7 +6,7 @@
       "name": "Underglow",
       "type": "rgb",
       "universe": 0,
-      "channels": { "r": 1, "g": 2, "b": 3 },
+      "channels": { "r": 7, "g": 8, "b": 9 },
       "maxOutput": 255,
       "defaults": {
         "enabled": false,
@@ -32,7 +32,7 @@
       "name": "Headlights",
       "type": "dimmer",
       "universe": 0,
-      "channel": 7,
+      "channel": 1,
       "maxOutput": 255,
       "defaults": {
         "enabled": false,
@@ -44,7 +44,7 @@
       "name": "Headlights 2",
       "type": "dimmer",
       "universe": 0,
-      "channel": 8,
+      "channel": 2,
       "maxOutput": 255,
       "hidden": false,
       "defaults": {
@@ -57,7 +57,7 @@
       "name": "Reverse Light",
       "type": "mode-dimmer",
       "universe": 0,
-      "channel": 9,
+      "channel": 3,
       "maxOutput": 255,
       "modes": ["off", "auto", "on"],
       "defaults": {

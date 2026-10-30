@@ -37,12 +37,12 @@ test('scaleBrightness clamps out-of-range input', () => {
   assert.equal(scaleBrightness(999), 255);
 });
 
-test('50% headlight brightness lands on DMX channel 7 at 128', () => {
+test('50% headlight brightness lands on DMX channel 1 at 128', () => {
   const state = createInitialState(lightingConfig);
   state.headlights = { enabled: true, brightness: 50 };
 
   const universe = renderDmxUniverses(state, lightingConfig).get(DMX_UNIVERSE);
-  assert.equal(channel(universe, 7), 128);
+  assert.equal(channel(universe, 1), 128);
 });
 
 test('a disabled headlight outputs zero regardless of brightness', () => {
@@ -50,7 +50,7 @@ test('a disabled headlight outputs zero regardless of brightness', () => {
   state.headlights = { enabled: false, brightness: 100 };
 
   const universe = renderDmxUniverses(state, lightingConfig).get(DMX_UNIVERSE);
-  assert.equal(channel(universe, 7), 0);
+  assert.equal(channel(universe, 1), 0);
 });
 
 test('accent RGB maps onto its configured channels with brightness scaling', () => {
@@ -136,7 +136,7 @@ test('scaleColorComponent combines component, brightness and output ceiling', ()
 
 test('a lowered maxOutput caps zone output', () => {
   const limited = { ...zoneById('headlights'), maxOutput: 200 };
-  assert.deepEqual(renderZoneChannels(limited, { enabled: true, brightness: 100 }), { 7: 200 });
+  assert.deepEqual(renderZoneChannels(limited, { enabled: true, brightness: 100 }), { 1: 200 });
 });
 
 test('applyColorOrder reorders pixel bytes for the configured chipset', () => {

@@ -169,11 +169,11 @@ fixtures with another's channel map.
 
 | Channel | Zone |
 | --- | --- |
-| 1, 2, 3 | Underglow RGB |
+| 1 | Headlights |
+| 2 | Headlights 2 |
+| 3 | Reverse light |
 | 4, 5, 6 | Accent RGB |
-| 7 | Headlights |
-| 8 | Headlights 2 (hidden, always 0 until unhidden) |
-| 9 | Reverse light |
+| 7, 8, 9 | Underglow RGB |
 
 ### Pixel zones
 
